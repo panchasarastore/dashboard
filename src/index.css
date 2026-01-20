@@ -1,0 +1,171 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Warm cream background palette */
+    --background: 30 50% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 30 40% 99%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 30 40% 99%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Orange accent - from reference */
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Warm secondary */
+    --secondary: 30 30% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 30 20% 94%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 24 100% 95%;
+    --accent-foreground: 24 95% 40%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 20% 90%;
+    --input: 30 20% 90%;
+    --ring: 24 95% 53%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar - warm cream tones */
+    --sidebar-background: 30 35% 97%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 24 95% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 24 100% 95%;
+    --sidebar-accent-foreground: 24 95% 40%;
+    --sidebar-border: 30 20% 90%;
+    --sidebar-ring: 24 95% 53%;
+
+    /* Custom colors for dashboard */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 30 20% 98%;
+
+    --card: 222 47% 10%;
+    --card-foreground: 30 20% 98%;
+
+    --popover: 222 47% 10%;
+    --popover-foreground: 30 20% 98%;
+
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 30% 15%;
+    --secondary-foreground: 30 20% 98%;
+
+    --muted: 222 30% 18%;
+    --muted-foreground: 30 15% 65%;
+
+    --accent: 24 50% 20%;
+    --accent-foreground: 24 95% 70%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 30% 18%;
+    --input: 222 30% 18%;
+    --ring: 24 95% 53%;
+
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 30 20% 98%;
+    --sidebar-primary: 24 95% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 24 50% 15%;
+    --sidebar-accent-foreground: 24 95% 70%;
+    --sidebar-border: 222 30% 18%;
+    --sidebar-ring: 24 95% 53%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Playfair Display', serif;
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .dashboard-card {
+    @apply bg-card rounded-xl border border-border shadow-sm p-6 transition-all duration-200 hover:shadow-md;
+  }
+
+  .stat-card {
+    @apply bg-card rounded-xl border border-border p-5 transition-all duration-200 hover:border-primary/30;
+  }
+
+  .order-row {
+    @apply bg-card rounded-lg border border-border p-4 transition-all duration-200 hover:bg-accent/50 cursor-pointer;
+  }
+
+  .product-card {
+    @apply bg-card rounded-xl border border-border overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .sidebar-item-active {
+    @apply bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-orange-400;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
