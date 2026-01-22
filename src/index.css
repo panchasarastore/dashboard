@@ -1,55 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
-
 @layer base {
   :root {
-    /* Warm cream background palette */
-    --background: 30 50% 98%;
+    /* Panchasara Brand Palette - Warm Cream */
+    --background: 20 100% 98%;
+    /* #FFFAF7 */
     --foreground: 222 47% 11%;
 
-    --card: 30 40% 99%;
+    --card: 20 100% 99%;
     --card-foreground: 222 47% 11%;
 
-    --popover: 30 40% 99%;
+    --popover: 20 100% 99%;
     --popover-foreground: 222 47% 11%;
 
-    /* Orange accent - from reference */
-    --primary: 24 95% 53%;
+    /* Brand Orange - #FF9D42 */
+    --primary: 29 100% 63%;
     --primary-foreground: 0 0% 100%;
 
-    /* Warm secondary */
-    --secondary: 30 30% 96%;
+    --secondary: 20 20% 94%;
     --secondary-foreground: 222 47% 11%;
 
-    --muted: 30 20% 94%;
+    --muted: 20 15% 92%;
     --muted-foreground: 220 10% 45%;
 
-    --accent: 24 100% 95%;
-    --accent-foreground: 24 95% 40%;
+    --accent: 29 100% 96%;
+    --accent-foreground: 29 100% 40%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 20% 90%;
-    --input: 30 20% 90%;
-    --ring: 24 95% 53%;
+    --border: 20 20% 90%;
+    --input: 20 20% 90%;
+    --ring: 29 100% 63%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
+    /* Aligned with landing page '2xl' */
 
-    /* Sidebar - warm cream tones */
-    --sidebar-background: 30 35% 97%;
+    --sidebar-background: 20 40% 97%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 24 95% 53%;
+    --sidebar-primary: 29 100% 63%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 24 100% 95%;
-    --sidebar-accent-foreground: 24 95% 40%;
-    --sidebar-border: 30 20% 90%;
-    --sidebar-ring: 24 95% 53%;
+    --sidebar-accent: 29 100% 95%;
+    --sidebar-accent-foreground: 29 100% 40%;
+    --sidebar-border: 20 20% 90%;
+    --sidebar-ring: 29 100% 63%;
 
-    /* Custom colors for dashboard */
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
@@ -59,42 +58,44 @@
   }
 
   .dark {
-    --background: 222 47% 8%;
-    --foreground: 30 20% 98%;
+    /* Panchasara Brand Palette - Deep Black */
+    --background: 0 0% 5%;
+    /* #0D0D0D */
+    --foreground: 20 20% 98%;
 
-    --card: 222 47% 10%;
-    --card-foreground: 30 20% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 20 20% 98%;
 
-    --popover: 222 47% 10%;
-    --popover-foreground: 30 20% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 20 20% 98%;
 
-    --primary: 24 95% 53%;
+    --primary: 29 100% 63%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 30% 15%;
-    --secondary-foreground: 30 20% 98%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 20 20% 98%;
 
-    --muted: 222 30% 18%;
-    --muted-foreground: 30 15% 65%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 24 50% 20%;
-    --accent-foreground: 24 95% 70%;
+    --accent: 29 50% 15%;
+    --accent-foreground: 29 100% 70%;
 
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 30% 18%;
-    --input: 222 30% 18%;
-    --ring: 24 95% 53%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 29 100% 63%;
 
-    --sidebar-background: 222 47% 6%;
-    --sidebar-foreground: 30 20% 98%;
-    --sidebar-primary: 24 95% 53%;
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 20 20% 98%;
+    --sidebar-primary: 29 100% 63%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 24 50% 15%;
-    --sidebar-accent-foreground: 24 95% 70%;
-    --sidebar-border: 222 30% 18%;
-    --sidebar-ring: 24 95% 53%;
+    --sidebar-accent: 29 50% 10%;
+    --sidebar-accent-foreground: 29 100% 70%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 29 100% 63%;
   }
 }
 
@@ -105,12 +106,21 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
-  h1, h2, h3, h4 {
-    font-family: 'Playfair Display', serif;
-    @apply font-semibold tracking-tight;
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-family: 'Lexend', sans-serif;
+    @apply font-semibold tracking-wide;
+  }
+
+  .font-serif {
+    font-family: 'Instrument Serif', serif;
+    @apply tracking-normal;
   }
 }
 
@@ -154,16 +164,22 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
   }
 
   @keyframes slideUp {
-    from { 
+    from {
       opacity: 0;
       transform: translateY(10px);
     }
-    to { 
+
+    to {
       opacity: 1;
       transform: translateY(0);
     }

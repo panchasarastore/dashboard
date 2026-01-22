@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Upload, ArrowLeft } from 'lucide-react';
+import { Upload, ArrowLeft, Loader2 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProductPreviewCard from '@/components/products/ProductPreviewCard';
 import { Button } from '@/components/ui/button';
@@ -8,14 +8,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { mockProducts } from '@/lib/mockData';
+import { supabase } from '@/lib/supabase';
+import { useStore } from '@/contexts/StoreContext';
 import { toast } from 'sonner';
 
 const EditProduct = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
-  
-  const product = mockProducts.find(p => p.id === productId);
+  const { activeStore } = useStore();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -27,50 +31,129 @@ const EditProduct = () => {
   });
 
   useEffect(() => {
-    if (product) {
-      setFormData({
-        name: product.name,
-        description: product.description,
-        price: product.price.toString(),
-        image: product.image,
-        acceptCustomDescription: product.acceptCustomDescription,
-        notice: product.notice || '',
-      });
-    }
-  }, [product]);
+    const fetchProduct = async () => {
+      if (!productId) return;
 
-  if (!product) {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('id', productId)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setFormData({
+            name: data.name,
+            description: data.description || '',
+            price: data.price.toString(),
+            image: Array.isArray(data.images) ? data.images[0] : (data.images || ''),
+            acceptCustomDescription: data.accepts_custom_note,
+            notice: data.product_notice || '',
+          });
+        }
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to load product');
+        navigate('/products');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [productId, navigate]);
+
+  if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="text-center py-16">
-          <p className="text-lg text-muted-foreground">Product not found</p>
-          <Button onClick={() => navigate('/products')} className="mt-4">
-            Back to Products
-          </Button>
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+          <p className="text-muted-foreground italic">Loading product details...</p>
         </div>
       </DashboardLayout>
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name || !formData.price) {
+
+    if (!formData.name || !formData.price || !activeStore || !productId) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    // In a real app, this would update the database
-    toast.success('Product updated successfully!');
-    navigate('/products');
+    setIsSubmitting(true);
+    try {
+      let imageUrl = formData.image;
+
+      // 1. If a new image is selected, handle storage replacement
+      if (imageFile) {
+        const folderPath = `stores/${activeStore.id}/products/${productId}`;
+
+        // List existing files to delete them first
+        const { data: existingFiles } = await supabase.storage
+          .from('store-assets')
+          .list(folderPath);
+
+        if (existingFiles && existingFiles.length > 0) {
+          const filesToRemove = existingFiles.map((f) => `${folderPath}/${f.name}`);
+          await supabase.storage.from('store-assets').remove(filesToRemove);
+        }
+
+        // Upload new image
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `image-1.${fileExt}`;
+        const filePath = `${folderPath}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('store-assets')
+          .upload(filePath, imageFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('store-assets')
+          .getPublicUrl(filePath);
+
+        imageUrl = publicUrl;
+      }
+
+      // 2. Update the database record
+      const { error } = await supabase
+        .from('products')
+        .update({
+          name: formData.name,
+          description: formData.description,
+          price: Number(formData.price),
+          images: imageUrl ? [imageUrl] : [],
+          accepts_custom_note: formData.acceptCustomDescription,
+          product_notice: formData.notice,
+        })
+        .eq('id', productId);
+
+      if (error) throw error;
+
+      toast.success('Product updated successfully!');
+      navigate('/products');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update product');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be less than 5MB');
+        return;
+      }
+      setImageFile(file);
       const url = URL.createObjectURL(file);
       setFormData(prev => ({ ...prev, image: url }));
-      toast.success('Image updated!');
+      toast.success('New image selected!');
     }
   };
 
@@ -115,9 +198,9 @@ const EditProduct = () => {
                 <Label>Product Image</Label>
                 {formData.image && (
                   <div className="w-full h-40 rounded-lg overflow-hidden mb-3">
-                    <img 
-                      src={formData.image} 
-                      alt="Current product" 
+                    <img
+                      src={formData.image}
+                      alt="Current product"
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -180,7 +263,7 @@ const EditProduct = () => {
                 <Switch
                   id="custom"
                   checked={formData.acceptCustomDescription}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setFormData(prev => ({ ...prev, acceptCustomDescription: checked }))
                   }
                 />
@@ -207,8 +290,15 @@ const EditProduct = () => {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" className="flex-1">
-                  Save Changes
+                <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
                 </Button>
               </div>
             </form>

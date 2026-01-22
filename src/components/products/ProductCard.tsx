@@ -21,23 +21,23 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleStock }: ProductCardPr
     <div className="product-card animate-slide-up">
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden">
-        <img 
-          src={product.image} 
+        <img
+          src={Array.isArray(product.images) ? product.images[0] : product.images}
           alt={product.name}
           className="w-full h-full object-cover"
         />
-        {!product.inStock && (
+        {!product.is_in_stock && (
           <div className="absolute inset-0 bg-foreground/60 flex items-center justify-center">
             <Badge variant="secondary" className="text-sm font-medium">
               Out of Stock
             </Badge>
           </div>
         )}
-        {product.notice && product.inStock && (
-          <Badge 
+        {product.product_notice && product.is_in_stock && (
+          <Badge
             className="absolute top-3 left-3 bg-warning text-warning-foreground text-xs"
           >
-            {product.notice}
+            {product.product_notice}
           </Badge>
         )}
       </div>
@@ -60,7 +60,7 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleStock }: ProductCardPr
                 Edit Product
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onToggleStock(product.id)}>
-                {product.inStock ? (
+                {product.is_in_stock ? (
                   <>
                     <EyeOff className="mr-2 h-4 w-4" />
                     Mark Out of Stock
@@ -72,7 +72,7 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleStock }: ProductCardPr
                   </>
                 )}
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => onDelete(product.id)}
                 className="text-destructive focus:text-destructive"
               >
@@ -82,7 +82,7 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleStock }: ProductCardPr
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        
+
         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
           {product.description}
         </p>
@@ -91,7 +91,7 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleStock }: ProductCardPr
           <p className="text-xl font-bold text-primary">
             ₹{product.price.toLocaleString()}
           </p>
-          {product.acceptCustomDescription && (
+          {product.accepts_custom_note && (
             <Badge variant="outline" className="text-xs">
               Custom orders
             </Badge>

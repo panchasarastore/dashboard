@@ -1,13 +1,16 @@
 export interface Product {
   id: string;
+  store_id: string;
   name: string;
   description: string;
   price: number;
-  image: string;
-  acceptCustomDescription: boolean;
-  notice?: string;
-  inStock: boolean;
-  createdAt: Date;
+  images: string[] | string;
+  accepts_custom_note: boolean;
+  product_notice: string | null;
+  is_in_stock: boolean;
+  stock_quantity: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Order {

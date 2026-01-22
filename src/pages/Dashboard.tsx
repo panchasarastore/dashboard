@@ -7,7 +7,7 @@ import { mockOrders, mockStats } from '@/lib/mockData';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  
+
   // Get upcoming orders (pending or confirmed)
   const upcomingOrders = mockOrders
     .filter(order => ['pending', 'confirmed', 'preparing'].includes(order.status))
@@ -17,11 +17,11 @@ const Dashboard = () => {
     <DashboardLayout>
       <div className="max-w-6xl">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-serif font-bold text-foreground mb-2">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl font-serif font-bold text-foreground mb-1 md:mb-2">
             Welcome back! 👋
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm md:text-base text-muted-foreground">
             Here's what's happening with your store today.
           </p>
         </div>
@@ -61,16 +61,16 @@ const Dashboard = () => {
 
         {/* Upcoming Orders */}
         <div className="dashboard-card">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h2 className="text-xl font-serif font-semibold text-foreground">
+              <h2 className="text-lg md:text-xl font-serif font-semibold text-foreground">
                 Upcoming Orders
               </h2>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs md:text-sm text-muted-foreground mt-1">
                 Orders that need your attention
               </p>
             </div>
-            <span className="text-sm font-medium text-primary">
+            <span className="text-xs md:text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full self-start sm:self-auto">
               {upcomingOrders.length} orders
             </span>
           </div>

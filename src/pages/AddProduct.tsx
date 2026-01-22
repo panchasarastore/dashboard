@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, ArrowLeft } from 'lucide-react';
+import { Upload, ArrowLeft, Loader2 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { useStore } from '@/contexts/StoreContext';
+import { supabase } from '@/lib/supabase';
 import ProductPreviewCard from '@/components/products/ProductPreviewCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +14,8 @@ import { toast } from 'sonner';
 
 const AddProduct = () => {
   const navigate = useNavigate();
+  const { activeStore } = useStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -20,27 +24,88 @@ const AddProduct = () => {
     acceptCustomDescription: false,
     notice: '',
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (!activeStore) {
+      toast.error('No active store found. Please create a store first.');
+      return;
+    }
+
     if (!formData.name || !formData.price) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    // In a real app, this would save to a database
-    toast.success('Product added successfully!');
-    navigate('/products');
+    setIsSubmitting(true);
+    setUploadProgress(0);
+    try {
+      // Generate the product ID beforehand so we can use it in the folder path
+      const productId = crypto.randomUUID();
+      let imageUrl = formData.image;
+
+      // 1. Upload image if exists
+      if (imageFile && activeStore) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `image-1.${fileExt}`; // Following the stores/{sid}/products/{pid}/image-1.ext format
+        const filePath = `stores/${activeStore.id}/products/${productId}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('store-assets')
+          .upload(filePath, imageFile);
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('store-assets')
+          .getPublicUrl(filePath);
+
+        imageUrl = publicUrl;
+      }
+
+      // 2. Insert product using the pre-generated ID
+      const { error } = await supabase
+        .from('products')
+        .insert({
+          id: productId,
+          store_id: activeStore.id,
+          name: formData.name,
+          description: formData.description,
+          price: Number(formData.price),
+          images: imageUrl ? [imageUrl] : [],
+          accepts_custom_note: formData.acceptCustomDescription,
+          product_notice: formData.notice,
+          is_in_stock: true,
+        });
+
+      if (error) throw error;
+
+      toast.success('Product added successfully!');
+      navigate('/products');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to add product');
+    } finally {
+      setIsSubmitting(false);
+      setUploadProgress(0);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // In a real app, this would upload to storage
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be less than 5MB');
+        return;
+      }
+
+      setImageFile(file);
       const url = URL.createObjectURL(file);
       setFormData(prev => ({ ...prev, image: url }));
-      toast.success('Image uploaded!');
+      toast.success('Image selected!');
     }
   };
 
@@ -141,7 +206,7 @@ const AddProduct = () => {
                 <Switch
                   id="custom"
                   checked={formData.acceptCustomDescription}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setFormData(prev => ({ ...prev, acceptCustomDescription: checked }))
                   }
                 />
@@ -171,8 +236,15 @@ const AddProduct = () => {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" className="flex-1">
-                  Add Product
+                <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    'Add Product'
+                  )}
                 </Button>
               </div>
             </form>
