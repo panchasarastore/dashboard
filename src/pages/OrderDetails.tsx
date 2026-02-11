@@ -179,6 +179,43 @@ const OrderDetails = () => {
               </div>
             </div>
 
+            {/* Order Items */}
+            <div className="dashboard-card pt-4 pb-2">
+              <h2 className="text-lg font-serif font-semibold text-foreground mb-4">
+                Purchased Items
+              </h2>
+              <div className="space-y-4">
+                {order.order_items?.map((item: any) => (
+                  <div key={item.id} className="flex items-center gap-4 py-3 border-b border-border last:border-0">
+                    <div className="w-16 h-16 rounded-xl bg-muted overflow-hidden flex-shrink-0">
+                      {item.product_image ? (
+                        <img src={item.product_image} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+                          <Package className="w-6 h-6" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-foreground truncate">{item.product_name}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {item.quantity} × ₹{item.product_price.toLocaleString()}
+                      </p>
+                      {item.custom_note && (
+                        <div className="mt-1 flex items-start gap-1 text-xs text-primary font-medium bg-primary/5 p-2 rounded-lg">
+                          <MessageSquare className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                          <span>{item.custom_note}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-foreground">₹{item.item_total.toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Custom Instructions */}
             {(order.customer_notes || order.delivery_notes) && (
               <div className="dashboard-card">
@@ -193,7 +230,7 @@ const OrderDetails = () => {
                     {order.customer_notes && (
                       <div className="mb-3">
                         <p className="text-xs text-muted-foreground uppercase font-semibold mb-1">Customer Note</p>
-                        <p className="text-muted-foreground">{order.customer_notes}</p>
+                        <p className="text-muted-foreground italic font-medium">"{order.customer_notes}"</p>
                       </div>
                     )}
                     {order.delivery_notes && (

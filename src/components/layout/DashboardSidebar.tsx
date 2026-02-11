@@ -34,6 +34,7 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: ShoppingBag, label: 'Manage Orders', path: '/orders' },
     { icon: PlusCircle, label: 'Add Product', path: '/add-product' },
     { icon: Edit3, label: 'Manage Products', path: '/products' },
   ];

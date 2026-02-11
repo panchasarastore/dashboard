@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import AddProduct from "./pages/AddProduct";
 import ManageProducts from "./pages/ManageProducts";
 import EditProduct from "./pages/EditProduct";
+import ManageOrders from "./pages/ManageOrders";
 import OrderDetails from "./pages/OrderDetails";
 import NotFound from "./pages/NotFound";
 import MyComponent from "./pages/test";
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/add-product" element={<ProtectedRoute><AddProduct /></ProtectedRoute>} />
               <Route path="/products" element={<ProtectedRoute><ManageProducts /></ProtectedRoute>} />
+              <Route path="/orders" element={<ProtectedRoute><ManageOrders /></ProtectedRoute>} />
               <Route path="/edit-product/:productId" element={<ProtectedRoute><EditProduct /></ProtectedRoute>} />
               <Route path="/orders/:orderId" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
               <Route path="/test" element={<ProtectedRoute><MyComponent /></ProtectedRoute>} />

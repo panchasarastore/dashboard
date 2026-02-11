@@ -1,8 +1,10 @@
-import { ReactNode, useState } from 'react';
-import { Menu } from 'lucide-react';
+import { ReactNode, useState, useEffect } from 'react';
+import { Menu, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useStore } from '@/contexts/StoreContext';
 import DashboardSidebar from './DashboardSidebar';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -11,6 +13,47 @@ interface DashboardLayoutProps {
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { activeStore } = useStore();
+
+  useEffect(() => {
+    if (!activeStore?.id) return;
+
+    const channel = supabase
+      .channel(`new-orders-${activeStore.id.slice(0, 8)}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'orders',
+          filter: `store_id=eq.${activeStore.id}`,
+        },
+        (payload) => {
+          const newOrder = payload.new as any;
+          toast.success(`🎉 New Order!`, {
+            description: `Order ${newOrder.order_number} received from ${newOrder.customer_name}`,
+            action: {
+              label: 'View',
+              onClick: () => window.location.href = `/orders/${newOrder.id}`
+            },
+            duration: 8000,
+          });
+
+          // Play a subtle notification sound (optional but good for UX)
+          try {
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            audio.volume = 0.4;
+            audio.play();
+          } catch (e) {
+            console.log('Audio playback blocked');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeStore?.id]);
 
   return (
     <div className="flex min-h-screen bg-background">
