@@ -6,14 +6,17 @@ import {
   Eye,
   Share2,
   Package,
-  ShoppingBag
+  ShoppingBag,
+  LogOut,
+  X
 } from 'lucide-react';
-import { storeInfo } from '@/lib/mockData';
 import { useStore } from '@/contexts/StoreContext';
+import { useAuth } from '@/contexts/AuthContext';
 import StoreSwitcher from './StoreSwitcher';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { X } from 'lucide-react';
+import { useState } from 'react';
+import ShareStoreModal from '../dashboard/ShareStoreModal';
 
 interface DashboardSidebarProps {
   isOpen?: boolean;
@@ -23,6 +26,11 @@ interface DashboardSidebarProps {
 const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
   const location = useLocation();
   const { activeStore } = useStore();
+  const { signOut } = useAuth();
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  const storeBaseUrl = import.meta.env.VITE_STORE_BASE_URL || 'http://localhost:4321';
+  const fullStoreUrl = `${storeBaseUrl}/${activeStore?.store_url_slug || ''}`;
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -31,13 +39,26 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
   ];
 
   const handleShareLink = () => {
-    const storeUrl = `https://store.example.com/${storeInfo.url}`;
-    navigator.clipboard.writeText(storeUrl);
-    toast.success('Store link copied to clipboard!');
+    setIsShareModalOpen(true);
   };
 
   const handleViewStore = () => {
-    toast.info('Store preview would open in a new tab');
+    if (activeStore?.store_url_slug) {
+      window.open(fullStoreUrl, '_blank');
+    } else {
+      toast.error('Store link not available');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success('Logged out successfully');
+      // Redirect to the store login page as requested
+      window.location.href = `${storeBaseUrl}/login`;
+    } catch (error: any) {
+      toast.error(error.message || 'Logout failed');
+    }
   };
 
   return (
@@ -126,19 +147,29 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
           </div>
         </nav>
 
-        {/* Footer */}
+        {/* Footer - Logout Button */}
         <div className="p-4 border-t border-sidebar-border">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-accent/50">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <ShoppingBag className="w-4 h-4 text-primary" />
+          <Button
+            variant="ghost"
+            onClick={handleLogout}
+            className="w-full group flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
+          >
+            <div className="w-8 h-8 rounded-full bg-muted group-hover:bg-destructive/20 flex items-center justify-center transition-colors">
+              <LogOut className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Free tier</p>
-              <p className="text-sm font-medium text-foreground">0% platform fee</p>
+            <div className="text-left">
+              <p className="text-sm font-medium">Logout</p>
+              <p className="text-[10px] opacity-70">End your session</p>
             </div>
-          </div>
+          </Button>
         </div>
       </aside>
+
+      <ShareStoreModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        storeUrl={fullStoreUrl}
+      />
     </>
   );
 };

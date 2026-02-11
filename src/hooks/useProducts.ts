@@ -19,5 +19,7 @@ export const useProducts = () => {
             return data;
         },
         enabled: !!activeStore,
+        staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+        gcTime: 1000 * 60 * 30, // Keep in memory for 30 minutes
     });
 };

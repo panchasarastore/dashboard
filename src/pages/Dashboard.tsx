@@ -1,17 +1,40 @@
 import { useNavigate } from 'react-router-dom';
-import { IndianRupee, Package, Clock, ShoppingBag } from 'lucide-react';
+import { IndianRupee, Package, Clock, ShoppingBag, Loader2 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatCard from '@/components/dashboard/StatCard';
 import OrderRow from '@/components/dashboard/OrderRow';
-import { mockOrders, mockStats } from '@/lib/mockData';
+import { useProducts } from '@/hooks/useProducts';
+import { useOrders } from '@/hooks/useOrders';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { data: products, isLoading: productsLoading, isFetching: productsFetching } = useProducts();
+  const { data: orders, isLoading: ordersLoading, isFetching: ordersFetching } = useOrders();
 
-  // Get upcoming orders (pending or confirmed)
-  const upcomingOrders = mockOrders
+  // Only show the full-page loader if we have NO data at all (first load)
+  const isInitialLoading = (productsLoading && !products) || (ordersLoading && !orders);
+
+  if (isInitialLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+          <p className="text-muted-foreground italic">Loading your dashboard...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Calculate stats
+  const totalRevenue = orders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+  const fulfilledOrders = orders?.filter(order => order.status === 'delivered').length || 0;
+  const pendingOrders = orders?.filter(order => ['pending', 'confirmed', 'preparing'].includes(order.status)).length || 0;
+  const totalProducts = products?.length || 0;
+
+  // Get upcoming orders (pending, confirmed, or preparing)
+  const upcomingOrders = (orders || [])
     .filter(order => ['pending', 'confirmed', 'preparing'].includes(order.status))
-    .sort((a, b) => a.deliveryDate.getTime() - b.deliveryDate.getTime());
+    .sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime());
 
   return (
     <DashboardLayout>
@@ -30,29 +53,28 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             title="Total Revenue"
-            value={`₹${mockStats.totalRevenue.toLocaleString()}`}
-            subtitle="This month"
+            value={`₹${totalRevenue.toLocaleString()}`}
+            subtitle="All time"
             icon={IndianRupee}
             variant="primary"
-            trend={{ value: 12, isPositive: true }}
           />
           <StatCard
             title="Fulfilled Orders"
-            value={mockStats.fulfilledOrders}
-            subtitle="All time"
+            value={fulfilledOrders}
+            subtitle="Completed deliveries"
             icon={Package}
             variant="success"
           />
           <StatCard
             title="Pending Orders"
-            value={mockStats.pendingOrders}
+            value={pendingOrders}
             subtitle="Requires attention"
             icon={Clock}
             variant="warning"
           />
           <StatCard
             title="Total Products"
-            value={mockStats.totalProducts}
+            value={totalProducts}
             subtitle="Active listings"
             icon={ShoppingBag}
             variant="default"
@@ -80,7 +102,13 @@ const Dashboard = () => {
               {upcomingOrders.map((order) => (
                 <OrderRow
                   key={order.id}
-                  order={order}
+                  order={{
+                    ...order,
+                    productName: order.order_number, // Fallback since we don't have product details joined here yet
+                    productImage: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop', // Temporary placeholder
+                    totalPrice: order.total_amount,
+                    deliveryDate: new Date(order.order_date),
+                  } as any}
                   onClick={() => navigate(`/orders/${order.id}`)}
                 />
               ))}
