@@ -146,7 +146,7 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
               </Button>
               <Button
                 variant="ghost"
-                onClick={() => window.location.href = `${storeBaseUrl}/create-store?edit=true`}
+                onClick={() => window.location.href = `${storeBaseUrl}/edit-store`}
                 className="w-full justify-start gap-3 text-muted-foreground hover:text-accent-foreground hover:bg-accent"
               >
                 <Edit3 className="w-5 h-5" />
