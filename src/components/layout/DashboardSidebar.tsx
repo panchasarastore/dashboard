@@ -144,6 +144,14 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
                 <Share2 className="w-5 h-5" />
                 <span>Share Store Link</span>
               </Button>
+              <Button
+                variant="ghost"
+                onClick={() => window.location.href = `${storeBaseUrl}/create-store?edit=true`}
+                className="w-full justify-start gap-3 text-muted-foreground hover:text-accent-foreground hover:bg-accent"
+              >
+                <Edit3 className="w-5 h-5" />
+                <span>Edit Store Page</span>
+              </Button>
             </div>
           </div>
         </nav>
