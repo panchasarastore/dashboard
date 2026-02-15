@@ -6,7 +6,8 @@ export const productSchema = z.object({
     price: z.string().min(1, 'Price is required').refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
         message: 'Price must be a positive number',
     }),
-    image: z.string().optional().or(z.literal('')),
+    category: z.string().max(50, 'Category is too long').optional().or(z.literal('')),
+    images: z.array(z.string()).max(4, 'Maximum 4 images allowed').default([]),
     accepts_custom_note: z.boolean().default(false),
     product_notice: z.string().max(200, 'Notice is too long').optional().or(z.literal('')),
 });

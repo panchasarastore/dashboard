@@ -5,12 +5,12 @@ import { Database } from '@/types/database.types';
 
 export type Product = Database['public']['Tables']['products']['Row'];
 
-export const useProducts = (searchQuery: string = '') => {
+export const useProducts = (searchQuery: string = '', category: string = '') => {
     const { activeStore } = useStore();
     const PAGE_SIZE = 12;
 
     return useInfiniteQuery({
-        queryKey: ['products', activeStore?.id, searchQuery],
+        queryKey: ['products', activeStore?.id, searchQuery, category],
         queryFn: async ({ pageParam = 0 }) => {
             if (!activeStore) return { data: [], nextCursor: null };
 
@@ -23,6 +23,10 @@ export const useProducts = (searchQuery: string = '') => {
 
             if (searchQuery) {
                 query = query.ilike('name', `%${searchQuery}%`);
+            }
+
+            if (category) {
+                query = query.eq('category', category);
             }
 
             const { data, error, count } = await query;

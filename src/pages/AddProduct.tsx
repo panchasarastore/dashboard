@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, ArrowLeft, Loader2 } from 'lucide-react';
+import { Upload, ArrowLeft, Loader2, X, Plus, ImageIcon } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useStore } from '@/contexts/StoreContext';
 import { supabase } from '@/lib/supabase';
@@ -21,8 +21,9 @@ const AddProduct = () => {
   const navigate = useNavigate();
   const { activeStore } = useStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<(File | null)[]>([null, null, null, null]);
   const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
+  const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
 
   const {
@@ -36,9 +37,10 @@ const AddProduct = () => {
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: '',
+      category: '',
       description: '',
       price: '',
-      image: '',
+      images: [],
       accepts_custom_note: false,
       product_notice: '',
     },
@@ -55,25 +57,28 @@ const AddProduct = () => {
     setIsSubmitting(true);
     try {
       const productId = crypto.randomUUID();
-      let imageUrl = data.image;
+      const imageUrls: string[] = [];
 
-      // 1. Upload image if exists
-      if (imageFile && activeStore) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `image-1.${fileExt}`;
-        const filePath = `stores/${activeStore.id}/products/${productId}/${fileName}`;
+      // 1. Upload images
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        if (file && activeStore) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `image-${i + 1}.${fileExt}`;
+          const filePath = `stores/${activeStore.id}/products/${productId}/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('store-assets')
-          .upload(filePath, imageFile);
+          const { error: uploadError } = await supabase.storage
+            .from('store-assets')
+            .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
+          if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('store-assets')
-          .getPublicUrl(filePath);
+          const { data: { publicUrl } } = supabase.storage
+            .from('store-assets')
+            .getPublicUrl(filePath);
 
-        imageUrl = publicUrl;
+          imageUrls.push(publicUrl);
+        }
       }
 
       // 2. Insert product
@@ -83,9 +88,10 @@ const AddProduct = () => {
           id: productId,
           store_id: activeStore.id,
           name: data.name,
+          category: data.category,
           description: data.description,
           price: Number(data.price),
-          images: imageUrl ? [imageUrl] : [],
+          images: imageUrls,
           accepts_custom_note: data.accepts_custom_note,
           product_notice: data.product_notice,
           is_in_stock: true,
@@ -102,7 +108,7 @@ const AddProduct = () => {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, slotIndex: number) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
@@ -112,22 +118,43 @@ const AddProduct = () => {
 
       const url = URL.createObjectURL(file);
       setTempImageSrc(url);
+      setActiveSlot(slotIndex);
       setIsCropModalOpen(true);
       // Reset input value so the same file can be selected again if needed
       e.target.value = '';
     }
   };
 
+  const handleRemoveImage = (index: number) => {
+    const newFiles = [...imageFiles];
+    newFiles[index] = null;
+    setImageFiles(newFiles);
+
+    // Update form state
+    const currentImages = watchAll.images || [];
+    const newImages = currentImages.filter((_, i) => i !== index);
+    setValue('images', newImages);
+  };
+
   const handleCropComplete = (croppedBlob: Blob) => {
+    if (activeSlot === null) return;
+
     // Create a new File object from the blob to maintain compatibility with the upload logic
-    const croppedFile = new File([croppedBlob], 'cropped-product-image.jpg', { type: 'image/jpeg' });
-    setImageFile(croppedFile);
+    const croppedFile = new File([croppedBlob], `product-image-${activeSlot + 1}.jpg`, { type: 'image/jpeg' });
+
+    const newFiles = [...imageFiles];
+    newFiles[activeSlot] = croppedFile;
+    setImageFiles(newFiles);
 
     const url = URL.createObjectURL(croppedBlob);
-    setValue('image', url);
+    const currentImages = watchAll.images || [];
+    const newImages = [...currentImages];
+    newImages[activeSlot] = url;
+    setValue('images', newImages);
 
     setIsCropModalOpen(false);
     setTempImageSrc(null);
+    setActiveSlot(null);
     toast.success('Image cropped successfully!');
   };
 
@@ -168,29 +195,67 @@ const AddProduct = () => {
               )}
             </div>
 
-            {/* Image Upload */}
+            {/* Category */}
             <div className="space-y-2">
-              <Label>Product Image</Label>
-              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <label htmlFor="image-upload" className="cursor-pointer">
-                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center mx-auto mb-3">
-                    <Upload className="w-6 h-6 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium text-foreground">
-                    Click to upload image
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    PNG, JPG up to 5MB
-                  </p>
-                </label>
+              <Label htmlFor="category">Category</Label>
+              <Input
+                id="category"
+                placeholder="e.g., Cakes, Pastries, Drinks"
+                {...register('category')}
+              />
+              {errors.category && (
+                <p className="text-xs text-destructive font-medium">{errors.category.message}</p>
+              )}
+            </div>
+
+            {/* Image Upload */}
+            <div className="space-y-3">
+              <Label>Product Images (Up to 4)</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[0, 1, 2, 3].map((index) => {
+                  const previewUrl = watchAll.images?.[index];
+                  return (
+                    <div key={index} className="relative group aspect-square">
+                      {previewUrl ? (
+                        <div className="relative w-full h-full rounded-xl overflow-hidden border border-border">
+                          <img
+                            src={previewUrl}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(index)}
+                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-full h-full">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageUpload(e, index)}
+                            className="hidden"
+                            id={`image-upload-${index}`}
+                          />
+                          <label
+                            htmlFor={`image-upload-${index}`}
+                            className="w-full h-full flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer"
+                          >
+                            <Plus className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                            <span className="text-[10px] font-bold uppercase mt-2 text-muted-foreground group-hover:text-primary tracking-tighter transition-colors">Slot {index + 1}</span>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+              <p className="text-[10px] text-muted-foreground leading-none">
+                First slot is the primary image. PNG, JPG up to 5MB.
+              </p>
             </div>
 
             {/* Description */}
@@ -297,7 +362,7 @@ const AddProduct = () => {
             name={watchAll.name}
             description={watchAll.description || ''}
             price={Number(watchAll.price) || 0}
-            image={watchAll.image || ''}
+            image={watchAll.images?.[0] || ''}
             notice={watchAll.product_notice || ''}
             acceptCustomDescription={watchAll.accepts_custom_note}
           />

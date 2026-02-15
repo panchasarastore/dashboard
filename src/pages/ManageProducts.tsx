@@ -27,6 +27,7 @@ const ManageProducts = () => {
   const queryClient = useQueryClient();
   const { activeStore } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   const {
@@ -36,7 +37,7 @@ const ManageProducts = () => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage
-  } = useProducts(debouncedSearch);
+  } = useProducts(debouncedSearch, selectedCategory === 'All' ? '' : selectedCategory);
 
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
@@ -44,6 +45,12 @@ const ManageProducts = () => {
   const displayProducts = useMemo(() => {
     return infiniteData?.pages.flatMap(page => page.data) || [];
   }, [infiniteData]);
+
+  const categories = useMemo(() => {
+    if (!displayProducts.length) return ['All'];
+    const unique = Array.from(new Set(displayProducts.map(p => (p as any).category).filter(Boolean)));
+    return ['All', ...unique as string[]];
+  }, [displayProducts]);
 
   const totalCount = infiniteData?.pages[0]?.totalCount || 0;
 
@@ -116,14 +123,30 @@ const ManageProducts = () => {
       </div>
 
       {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-        <Input
-          placeholder="Search products..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Input
+            placeholder="Search products..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+          {categories.map((category) => (
+            <Button
+              key={category}
+              variant={selectedCategory === category ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedCategory(category)}
+              className="rounded-full whitespace-nowrap"
+            >
+              {category}
+            </Button>
+          ))}
+        </div>
       </div>
       {isLoading && !infiniteData ? (
         <div className="flex flex-col items-center justify-center py-20">
