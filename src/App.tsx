@@ -15,11 +15,13 @@ import OrderDetails from "./pages/OrderDetails";
 import NotFound from "./pages/NotFound";
 import MyComponent from "./pages/test";
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+import DashboardLayout from "./components/layout/DashboardLayout";
+
+const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
-  return <>{children}</>;
+  return children ? <>{children}</> : null;
 };
 
 const queryClient = new QueryClient();
@@ -34,13 +36,19 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
-              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/add-product" element={<ProtectedRoute><AddProduct /></ProtectedRoute>} />
-              <Route path="/products" element={<ProtectedRoute><ManageProducts /></ProtectedRoute>} />
-              <Route path="/orders" element={<ProtectedRoute><ManageOrders /></ProtectedRoute>} />
-              <Route path="/edit-product/:productId" element={<ProtectedRoute><EditProduct /></ProtectedRoute>} />
-              <Route path="/orders/:orderId" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
-              <Route path="/test" element={<ProtectedRoute><MyComponent /></ProtectedRoute>} />
+
+              {/* Dashboard Layout Group */}
+              <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                <Route index element={<Dashboard />} />
+                <Route path="add-product" element={<AddProduct />} />
+                <Route path="products" element={<ManageProducts />} />
+                <Route path="orders" element={<ManageOrders />} />
+                <Route path="edit-product/:productId" element={<EditProduct />} />
+                <Route path="orders/:orderId" element={<OrderDetails />} />
+                <Route path="test" element={<MyComponent />} />
+              </Route>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

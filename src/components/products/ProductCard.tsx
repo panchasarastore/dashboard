@@ -1,5 +1,5 @@
 import { MoreVertical, Edit2, Trash2, Eye, EyeOff } from 'lucide-react';
-import { Product } from '@/lib/mockData';
+import { Product } from '@/hooks/useProducts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,7 +22,7 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleStock }: ProductCardPr
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden">
         <img
-          src={Array.isArray(product.images) ? product.images[0] : product.images}
+          src={product.images[0] || 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop'}
           alt={product.name}
           className="w-full h-full object-cover"
         />

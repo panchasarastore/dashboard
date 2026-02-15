@@ -2,46 +2,29 @@ import { useEffect } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/contexts/StoreContext';
+import { Database } from '@/types/database.types';
 
-export interface Order {
-    id: string;
-    store_id: string;
-    order_number: string;
-    customer_name: string;
-    customer_phone: string;
-    customer_email: string;
-    delivery_method: string;
-    delivery_address?: string;
-    delivery_pincode?: string;
-    delivery_landmark?: string;
-    delivery_notes?: string;
-    delivery_lat?: number;
-    delivery_lng?: number;
-    subtotal: number;
-    total_amount: number;
-    currency: string;
-    payment_status: string;
-    payment_method: string;
+type OrderRow = Database['public']['Tables']['orders']['Row'];
+type OrderItemRow = Database['public']['Tables']['order_items']['Row'];
+type ProductRow = Database['public']['Tables']['products']['Row'];
+
+export interface Order extends OrderRow {
+    status: OrderRow['order_status'];
     order_date: string;
-    time_slot: string;
-    customer_notes?: string;
-    status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered';
-    created_at: string;
 }
 
-export interface OrderItem {
-    id: string;
-    order_id: string;
-    product_id: string;
-    product_name: string;
-    product_price: number;
-    quantity: number;
-    item_total: number;
-    variant_snapshot?: any;
-    custom_note?: string;
-    products?: {
+export interface OrderItem extends OrderItemRow {
+    products: {
         images: string[];
-    };
+    } | null;
+}
+
+export interface OrderWithDetails extends OrderRow {
+    items: (OrderItemRow & {
+        products: {
+            images: string[];
+        } | null;
+    })[];
 }
 
 export const useOrders = (searchQuery: string = '') => {
@@ -72,8 +55,15 @@ export const useOrders = (searchQuery: string = '') => {
                         old: payload.old
                     });
 
-                    // Invalidate projects and orders
-                    queryClient.invalidateQueries({ queryKey: ['orders'] });
+                    // Only invalidate if the event is relevant (already filtered by Supabase, but good to be explicit)
+                    if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+                        queryClient.invalidateQueries({ queryKey: ['orders', activeStore.id] });
+
+                        // If it's a specific order we might have in cache, invalidate it too
+                        if (payload.new && (payload.new as any).id) {
+                            queryClient.invalidateQueries({ queryKey: ['order', (payload.new as any).id] });
+                        }
+                    }
                 }
             )
             .subscribe((status, err) => {
@@ -111,7 +101,9 @@ export const useOrders = (searchQuery: string = '') => {
 
             if (error) throw error;
 
-            const mappedData = (data as any[]).map(order => {
+            const typedData = data as unknown as OrderWithDetails[];
+
+            const mappedData = typedData.map(order => {
                 const items = order.items || [];
                 const firstItem = items[0];
                 const firstProduct = firstItem?.products;
@@ -120,8 +112,8 @@ export const useOrders = (searchQuery: string = '') => {
 
                 return {
                     ...order,
-                    status: (order as any).order_status,
-                    order_date: (order as any).created_at,
+                    status: order.order_status,
+                    order_date: order.created_at,
                     productName: firstItem?.product_name || `Order #${order.order_number.slice(-4)}`,
                     productImage: firstImage || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop', // Fallback
                 };
@@ -130,7 +122,7 @@ export const useOrders = (searchQuery: string = '') => {
             const nextCursor = (count && pageParam + PAGE_SIZE < count) ? pageParam + PAGE_SIZE : null;
 
             return {
-                data: mappedData as (Order & { productName: string, productImage: string })[],
+                data: mappedData as (Order & { productName: string; productImage: string })[],
                 nextCursor,
                 totalCount: count
             };
@@ -156,16 +148,19 @@ export const useOrder = (orderId: string | undefined) => {
                 .single();
 
             if (error) throw error;
+            if (!data) return null;
+
+            const order = data as unknown as OrderWithDetails;
 
             return {
-                ...data,
-                status: data.order_status,
-                order_date: data.created_at,
-                order_items: (data.items || []).map((item: any) => ({
+                ...order,
+                status: order.order_status,
+                order_date: order.created_at,
+                order_items: (order.items || []).map((item) => ({
                     ...item,
-                    product_image: item.products?.images?.[0] || null
+                    product_image: (item.products as any)?.images?.[0] || null
                 }))
-            } as any;
+            };
         },
         enabled: !!orderId,
         staleTime: 1000 * 60 * 5,

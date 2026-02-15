@@ -1,17 +1,12 @@
 import { format } from 'date-fns';
 import { ChevronRight, Clock, CheckCircle, Package, Truck, Check, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Order } from '@/hooks/useOrders';
 
 interface OrderRowProps {
-  order: {
-    id: string;
-    order_number: string;
-    customer_name: string;
+  order: Order & {
     productName: string;
     productImage: string;
-    totalPrice: number;
-    deliveryDate: Date;
-    status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered';
   };
   onClick: () => void;
 }
@@ -87,10 +82,10 @@ const OrderRow = ({ order, onClick }: OrderRowProps) => {
 
       {/* Delivery Date & Price */}
       <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
-        <p className="text-sm md:text-base font-bold text-foreground">₹{order.totalPrice.toLocaleString()}</p>
+        <p className="text-sm md:text-base font-bold text-foreground">₹{order.total_amount.toLocaleString()}</p>
         <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
           <Clock className="w-3 h-3" />
-          {format(order.deliveryDate, 'MMM dd, p')}
+          {format(new Date(order.order_date), 'MMM dd, p')}
         </div>
       </div>
 

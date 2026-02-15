@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import ShareStoreModal from '../dashboard/ShareStoreModal';
+import { config } from '@/lib/config';
 
 interface DashboardSidebarProps {
   isOpen?: boolean;
@@ -29,14 +30,14 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
   const { signOut } = useAuth();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
-  const storeBaseUrl = import.meta.env.VITE_STORE_BASE_URL || 'http://localhost:4321';
+  const storeBaseUrl = config.store.baseUrl;
   const fullStoreUrl = `${storeBaseUrl}/${activeStore?.store_url_slug || ''}`;
 
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: ShoppingBag, label: 'Manage Orders', path: '/orders' },
-    { icon: PlusCircle, label: 'Add Product', path: '/add-product' },
-    { icon: Edit3, label: 'Manage Products', path: '/products' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+    { icon: ShoppingBag, label: 'Manage Orders', path: '/dashboard/orders' },
+    { icon: PlusCircle, label: 'Add Product', path: '/dashboard/add-product' },
+    { icon: Edit3, label: 'Manage Products', path: '/dashboard/products' },
   ];
 
   const handleShareLink = () => {
@@ -108,7 +109,9 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
         <nav className="flex-1 p-4">
           <div className="space-y-1">
             {menuItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const isActive = item.path === '/dashboard'
+                ? location.pathname === '/dashboard' || location.pathname === '/dashboard/'
+                : location.pathname.startsWith(item.path);
               return (
                 <Link
                   key={item.path}

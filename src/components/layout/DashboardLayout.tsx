@@ -1,18 +1,16 @@
-import { ReactNode, useState, useEffect } from 'react';
-import { Menu, ShoppingBag } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useStore } from '@/contexts/StoreContext';
 import DashboardSidebar from './DashboardSidebar';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { Outlet, useNavigate } from 'react-router-dom';
 
-interface DashboardLayoutProps {
-  children: ReactNode;
-}
-
-const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { activeStore } = useStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!activeStore?.id) return;
@@ -33,7 +31,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             description: `Order ${newOrder.order_number} received from ${newOrder.customer_name}`,
             action: {
               label: 'View',
-              onClick: () => window.location.href = `/orders/${newOrder.id}`
+              onClick: () => navigate(`/orders/${newOrder.id}`)
             },
             duration: 8000,
           });
@@ -53,7 +51,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeStore?.id]);
+  }, [activeStore?.id, navigate]);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -85,7 +83,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
         <main className="flex-1 overflow-auto">
           <div className="p-4 md:p-8">
-            {children}
+            <Outlet />
           </div>
         </main>
       </div>

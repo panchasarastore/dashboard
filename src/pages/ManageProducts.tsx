@@ -5,8 +5,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProductCard from '@/components/products/ProductCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Product } from '@/lib/mockData';
-import { useProducts } from '@/hooks/useProducts';
+import { useProducts, Product } from '@/hooks/useProducts';
 import { useStore } from '@/contexts/StoreContext';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
@@ -43,13 +42,13 @@ const ManageProducts = () => {
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
   const displayProducts = useMemo(() => {
-    return (infiniteData?.pages.flatMap(page => page.data) || []) as Product[];
+    return infiniteData?.pages.flatMap(page => page.data) || [];
   }, [infiniteData]);
 
   const totalCount = infiniteData?.pages[0]?.totalCount || 0;
 
   const handleEdit = (product: Product) => {
-    navigate(`/edit-product/${product.id}`);
+    navigate(`/dashboard/edit-product/${product.id}`);
   };
 
   const handleDelete = async (productId: string) => {
@@ -84,7 +83,7 @@ const ManageProducts = () => {
     try {
       const { error } = await supabase
         .from('products')
-        .update({ is_in_stock: !product.is_in_stock })
+        .update({ is_in_stock: !product.is_in_stock } as any)
         .eq('id', productId);
 
       if (error) throw error;
@@ -99,122 +98,120 @@ const ManageProducts = () => {
   };
 
   return (
-    <DashboardLayout>
-      <div className="max-w-6xl">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-serif font-bold text-foreground mb-2">
-              Manage Products
-            </h1>
-            <p className="text-muted-foreground">
-              {totalCount} products in your store
-            </p>
-          </div>
-          <Button onClick={() => navigate('/add-product')}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Product
-          </Button>
+    <div className="max-w-6xl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-serif font-bold text-foreground mb-2">
+            Manage Products
+          </h1>
+          <p className="text-muted-foreground">
+            {totalCount} products in your store
+          </p>
         </div>
-
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <Input
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        {isLoading && !infiniteData ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-            <p className="text-muted-foreground italic">Fetching your products...</p>
-          </div>
-        ) : error ? (
-          <div className="dashboard-card border-destructive/20 bg-destructive/5 text-center py-12">
-            <p className="text-destructive font-medium mb-2">Error loading products</p>
-            <p className="text-sm text-muted-foreground">{(error as any).message || 'Something went wrong'}</p>
-          </div>
-        ) : (
-          <>
-            {/* Products Grid */}
-            {displayProducts.length > 0 ? (
-              <div className="space-y-8 animate-fade-in">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {displayProducts.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onEdit={handleEdit}
-                      onDelete={(id) => setDeleteProductId(id)}
-                      onToggleStock={handleToggleStock}
-                    />
-                  ))}
-                </div>
-
-                {hasNextPage && (
-                  <div className="flex justify-center pb-8">
-                    <Button
-                      onClick={() => fetchNextPage()}
-                      disabled={isFetchingNextPage}
-                      variant="outline"
-                      className="rounded-xl px-12"
-                    >
-                      {isFetchingNextPage ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      ) : null}
-                      Load More Products
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="dashboard-card text-center py-16 animate-fade-in">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                  <Search className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <p className="text-lg font-medium text-foreground mb-2">
-                  {searchQuery ? 'No products found' : 'No products yet'}
-                </p>
-                <p className="text-muted-foreground mb-6">
-                  {searchQuery
-                    ? 'Try a different search term'
-                    : 'Add your first product to get started'}
-                </p>
-                {!searchQuery && (
-                  <Button onClick={() => navigate('/add-product')}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Your First Product
-                  </Button>
-                )}
-              </div>
-            )}
-          </>
-        )}
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={!!deleteProductId} onOpenChange={() => setDeleteProductId(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Product?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. The product will be permanently removed from your store.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => deleteProductId && handleDelete(deleteProductId)}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <Button onClick={() => navigate('/dashboard/add-product')}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Product
+        </Button>
       </div>
-    </DashboardLayout>
+
+      {/* Search */}
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+        <Input
+          placeholder="Search products..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+      {isLoading && !infiniteData ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+          <p className="text-muted-foreground italic">Fetching your products...</p>
+        </div>
+      ) : error ? (
+        <div className="dashboard-card border-destructive/20 bg-destructive/5 text-center py-12">
+          <p className="text-destructive font-medium mb-2">Error loading products</p>
+          <p className="text-sm text-muted-foreground">{(error as any).message || 'Something went wrong'}</p>
+        </div>
+      ) : (
+        <>
+          {/* Products Grid */}
+          {displayProducts.length > 0 ? (
+            <div className="space-y-8 animate-fade-in">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onEdit={handleEdit}
+                    onDelete={(id) => setDeleteProductId(id)}
+                    onToggleStock={handleToggleStock}
+                  />
+                ))}
+              </div>
+
+              {hasNextPage && (
+                <div className="flex justify-center pb-8">
+                  <Button
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    variant="outline"
+                    className="rounded-xl px-12"
+                  >
+                    {isFetchingNextPage ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : null}
+                    Load More Products
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="dashboard-card text-center py-16 animate-fade-in">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <p className="text-lg font-medium text-foreground mb-2">
+                {searchQuery ? 'No products found' : 'No products yet'}
+              </p>
+              <p className="text-muted-foreground mb-6">
+                {searchQuery
+                  ? 'Try a different search term'
+                  : 'Add your first product to get started'}
+              </p>
+              {!searchQuery && (
+                <Button onClick={() => navigate('/add-product')}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Your First Product
+                </Button>
+              )}
+            </div>
+          )}
+        </>
+      )}
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteProductId} onOpenChange={() => setDeleteProductId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Product?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The product will be permanently removed from your store.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteProductId && handleDelete(deleteProductId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 };
 

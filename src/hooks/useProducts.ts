@@ -1,6 +1,9 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/contexts/StoreContext';
+import { Database } from '@/types/database.types';
+
+export type Product = Database['public']['Tables']['products']['Row'];
 
 export const useProducts = (searchQuery: string = '') => {
     const { activeStore } = useStore();
@@ -29,7 +32,7 @@ export const useProducts = (searchQuery: string = '') => {
             const nextCursor = (count && pageParam + PAGE_SIZE < count) ? pageParam + PAGE_SIZE : null;
 
             return {
-                data: data || [],
+                data: (data || []) as Product[],
                 nextCursor,
                 totalCount: count
             };
