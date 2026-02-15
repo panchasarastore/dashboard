@@ -11,46 +11,52 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { productSchema, ProductFormValues } from '@/lib/schemas/productSchema';
 
 const AddProduct = () => {
   const navigate = useNavigate();
   const { activeStore } = useStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    image: '',
-    acceptCustomDescription: false,
-    notice: '',
-  });
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<ProductFormValues>({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      price: '',
+      image: '',
+      accepts_custom_note: false,
+      product_notice: '',
+    },
+  });
 
+  const watchAll = watch();
+
+  const onSubmit = async (data: ProductFormValues) => {
     if (!activeStore) {
       toast.error('No active store found. Please create a store first.');
       return;
     }
 
-    if (!formData.name || !formData.price) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
     setIsSubmitting(true);
-    setUploadProgress(0);
     try {
-      // Generate the product ID beforehand so we can use it in the folder path
       const productId = crypto.randomUUID();
-      let imageUrl = formData.image;
+      let imageUrl = data.image;
 
       // 1. Upload image if exists
       if (imageFile && activeStore) {
         const fileExt = imageFile.name.split('.').pop();
-        const fileName = `image-1.${fileExt}`; // Following the stores/{sid}/products/{pid}/image-1.ext format
+        const fileName = `image-1.${fileExt}`;
         const filePath = `stores/${activeStore.id}/products/${productId}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
@@ -59,7 +65,6 @@ const AddProduct = () => {
 
         if (uploadError) throw uploadError;
 
-        // Get public URL
         const { data: { publicUrl } } = supabase.storage
           .from('store-assets')
           .getPublicUrl(filePath);
@@ -67,18 +72,18 @@ const AddProduct = () => {
         imageUrl = publicUrl;
       }
 
-      // 2. Insert product using the pre-generated ID
+      // 2. Insert product
       const { error } = await supabase
         .from('products')
         .insert({
           id: productId,
           store_id: activeStore.id,
-          name: formData.name,
-          description: formData.description,
-          price: Number(formData.price),
+          name: data.name,
+          description: data.description,
+          price: Number(data.price),
           images: imageUrl ? [imageUrl] : [],
-          accepts_custom_note: formData.acceptCustomDescription,
-          product_notice: formData.notice,
+          accepts_custom_note: data.accepts_custom_note,
+          product_notice: data.product_notice,
           is_in_stock: true,
         });
 
@@ -90,7 +95,6 @@ const AddProduct = () => {
       toast.error(error.message || 'Failed to add product');
     } finally {
       setIsSubmitting(false);
-      setUploadProgress(0);
     }
   };
 
@@ -104,7 +108,7 @@ const AddProduct = () => {
 
       setImageFile(file);
       const url = URL.createObjectURL(file);
-      setFormData(prev => ({ ...prev, image: url }));
+      setValue('image', url);
       toast.success('Image selected!');
     }
   };
@@ -133,16 +137,18 @@ const AddProduct = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form */}
           <div className="dashboard-card">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Product Name */}
               <div className="space-y-2">
                 <Label htmlFor="name">Product Name *</Label>
                 <Input
                   id="name"
                   placeholder="e.g., Chocolate Truffle Cake"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  {...register('name')}
                 />
+                {errors.name && (
+                  <p className="text-xs text-destructive font-medium">{errors.name.message}</p>
+                )}
               </div>
 
               {/* Image Upload */}
@@ -177,9 +183,11 @@ const AddProduct = () => {
                   id="description"
                   placeholder="Describe your product..."
                   rows={3}
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  {...register('description')}
                 />
+                {errors.description && (
+                  <p className="text-xs text-destructive font-medium">{errors.description.message}</p>
+                )}
               </div>
 
               {/* Price */}
@@ -190,9 +198,11 @@ const AddProduct = () => {
                   type="number"
                   placeholder="0"
                   min="0"
-                  value={formData.price}
-                  onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                  {...register('price')}
                 />
+                {errors.price && (
+                  <p className="text-xs text-destructive font-medium">{errors.price.message}</p>
+                )}
               </div>
 
               {/* Accept Custom Description */}
@@ -203,12 +213,16 @@ const AddProduct = () => {
                     Allow buyers to add custom instructions
                   </p>
                 </div>
-                <Switch
-                  id="custom"
-                  checked={formData.acceptCustomDescription}
-                  onCheckedChange={(checked) =>
-                    setFormData(prev => ({ ...prev, acceptCustomDescription: checked }))
-                  }
+                <Controller
+                  name="accepts_custom_note"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch
+                      id="custom"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
                 />
               </div>
 
@@ -218,9 +232,11 @@ const AddProduct = () => {
                 <Input
                   id="notice"
                   placeholder="e.g., Order 2 days in advance"
-                  value={formData.notice}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notice: e.target.value }))}
+                  {...register('product_notice')}
                 />
+                {errors.product_notice && (
+                  <p className="text-xs text-destructive font-medium">{errors.product_notice.message}</p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   This will be displayed as a badge on your product
                 </p>
@@ -261,12 +277,12 @@ const AddProduct = () => {
               </p>
             </div>
             <ProductPreviewCard
-              name={formData.name}
-              description={formData.description}
-              price={Number(formData.price) || 0}
-              image={formData.image}
-              notice={formData.notice}
-              acceptCustomDescription={formData.acceptCustomDescription}
+              name={watchAll.name}
+              description={watchAll.description || ''}
+              price={Number(watchAll.price) || 0}
+              image={watchAll.image || ''}
+              notice={watchAll.product_notice || ''}
+              acceptCustomDescription={watchAll.accepts_custom_note}
             />
           </div>
         </div>

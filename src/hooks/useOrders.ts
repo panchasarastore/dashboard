@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/contexts/StoreContext';
 
@@ -44,9 +44,10 @@ export interface OrderItem {
     };
 }
 
-export const useOrders = () => {
+export const useOrders = (searchQuery: string = '') => {
     const { activeStore } = useStore();
     const queryClient = useQueryClient();
+    const PAGE_SIZE = 20;
 
     // Set up real-time subscription
     useEffect(() => {
@@ -72,7 +73,7 @@ export const useOrders = () => {
                     });
 
                     // Invalidate projects and orders
-                    queryClient.invalidateQueries({ queryKey: ['orders', activeStore.id] });
+                    queryClient.invalidateQueries({ queryKey: ['orders'] });
                 }
             )
             .subscribe((status, err) => {
@@ -89,21 +90,28 @@ export const useOrders = () => {
         };
     }, [activeStore?.id, queryClient]);
 
-    return useQuery({
-        queryKey: ['orders', activeStore?.id],
-        queryFn: async () => {
-            if (!activeStore) return [];
+    return useInfiniteQuery({
+        queryKey: ['orders', activeStore?.id, searchQuery],
+        queryFn: async ({ pageParam = 0 }) => {
+            if (!activeStore) return { data: [], nextCursor: null };
 
-            const { data, error } = await supabase
+            let query = supabase
                 .from('orders')
-                .select('*, items:order_items(*, products(images))')
+                .select('*, items:order_items(*, products(images))', { count: 'exact' })
                 .eq('store_id', activeStore.id)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .range(pageParam, pageParam + PAGE_SIZE - 1);
+
+            if (searchQuery) {
+                // Search in customer_name or order_number
+                query = query.or(`customer_name.ilike.%${searchQuery}%,order_number.ilike.%${searchQuery}%`);
+            }
+
+            const { data, error, count } = await query;
 
             if (error) throw error;
 
-            // Map DB fields to component expectations
-            return (data as any[]).map(order => {
+            const mappedData = (data as any[]).map(order => {
                 const items = order.items || [];
                 const firstItem = items[0];
                 const firstProduct = firstItem?.products;
@@ -117,11 +125,21 @@ export const useOrders = () => {
                     productName: firstItem?.product_name || `Order #${order.order_number.slice(-4)}`,
                     productImage: firstImage || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop', // Fallback
                 };
-            }) as (Order & { productName: string, productImage: string })[];
+            });
+
+            const nextCursor = (count && pageParam + PAGE_SIZE < count) ? pageParam + PAGE_SIZE : null;
+
+            return {
+                data: mappedData as (Order & { productName: string, productImage: string })[],
+                nextCursor,
+                totalCount: count
+            };
         },
+        initialPageParam: 0,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
         enabled: !!activeStore,
-        staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-        gcTime: 1000 * 60 * 30, // Keep in memory for 30 minutes
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 30,
     });
 };
 

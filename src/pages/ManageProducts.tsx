@@ -1,17 +1,17 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Loader2 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProductCard from '@/components/products/ProductCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { mockProducts, Product } from '@/lib/mockData';
+import { Product } from '@/lib/mockData';
 import { useProducts } from '@/hooks/useProducts';
 import { useStore } from '@/contexts/StoreContext';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,32 +27,37 @@ const ManageProducts = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { activeStore } = useStore();
-  const { data: realProducts, isLoading, error } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 500);
+
+  const {
+    data: infiniteData,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useProducts(debouncedSearch);
+
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState<string | null>(null); // To show loading on specific cards if needed
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
-  // Since react-query handles fetching, we should sync local state when data changes
-  // or just use filteredProducts directly from realProducts
-  const displayProducts = (realProducts || []) as Product[];
+  const displayProducts = useMemo(() => {
+    return (infiniteData?.pages.flatMap(page => page.data) || []) as Product[];
+  }, [infiniteData]);
 
-  const filteredProducts = displayProducts.filter(product =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const totalCount = infiniteData?.pages[0]?.totalCount || 0;
 
   const handleEdit = (product: Product) => {
-    // In a real app, this would navigate to edit page with product data
     navigate(`/edit-product/${product.id}`);
   };
 
   const handleDelete = async (productId: string) => {
-    const product = displayProducts.find(p => p.id === productId);
-    if (!product || !activeStore) return;
+    if (!activeStore) return;
 
     setIsProcessing(productId);
     try {
-      // Call the Unified Deletion Edge Function
-      const { data, error } = await supabase.functions.invoke('delete-product', {
+      const { error } = await supabase.functions.invoke('delete-product', {
         body: {
           productId: productId,
           storeId: activeStore.id
@@ -103,7 +108,7 @@ const ManageProducts = () => {
               Manage Products
             </h1>
             <p className="text-muted-foreground">
-              {displayProducts.length} products in your store
+              {totalCount} products in your store
             </p>
           </div>
           <Button onClick={() => navigate('/add-product')}>
@@ -122,7 +127,7 @@ const ManageProducts = () => {
             className="pl-10"
           />
         </div>
-        {isLoading && !realProducts ? (
+        {isLoading && !infiniteData ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
             <p className="text-muted-foreground italic">Fetching your products...</p>
@@ -135,17 +140,35 @@ const ManageProducts = () => {
         ) : (
           <>
             {/* Products Grid */}
-            {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
-                {filteredProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onEdit={handleEdit}
-                    onDelete={(id) => setDeleteProductId(id)}
-                    onToggleStock={handleToggleStock}
-                  />
-                ))}
+            {displayProducts.length > 0 ? (
+              <div className="space-y-8 animate-fade-in">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {displayProducts.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onEdit={handleEdit}
+                      onDelete={(id) => setDeleteProductId(id)}
+                      onToggleStock={handleToggleStock}
+                    />
+                  ))}
+                </div>
+
+                {hasNextPage && (
+                  <div className="flex justify-center pb-8">
+                    <Button
+                      onClick={() => fetchNextPage()}
+                      disabled={isFetchingNextPage}
+                      variant="outline"
+                      className="rounded-xl px-12"
+                    >
+                      {isFetchingNextPage ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
+                      Load More Products
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="dashboard-card text-center py-16 animate-fade-in">
