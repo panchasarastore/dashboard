@@ -108,10 +108,9 @@ const Dashboard = () => {
     totalProducts: 0
   };
 
-  // Get upcoming orders from the already fetched recent orders
-  const upcomingOrders = orders
-    .filter(order => ['pending', 'confirmed', 'preparing'].includes(order.status))
-    .sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime());
+  // Get recent orders (all statuses) sorted newest first
+  const recentOrders = orders
+    .sort((a, b) => new Date(b.order_date).getTime() - new Date(a.order_date).getTime());
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -322,15 +321,21 @@ const Dashboard = () => {
               </Button>
             </div>
 
-            {upcomingOrders.length > 0 ? (
+            {recentOrders.length > 0 ? (
               <div className="space-y-4 flex-1">
-                {upcomingOrders.slice(0, 4).map((order) => (
+                {recentOrders.slice(0, 5).map((order) => (
                   <div
                     key={order.id}
                     className="flex items-center gap-4 p-3 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer group"
-                    onClick={() => navigate(`/dashboard/orders/${order.id}`)}
+                    onClick={() => {
+                      if (order.id) {
+                        navigate(`/dashboard/orders/${order.id}`);
+                      } else {
+                        toast.error("Order ID missing");
+                      }
+                    }}
                   >
-                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-border flex-shrink-0">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-border flex-shrink-0 bg-muted">
                       <img
                         src={order.productImage}
                         alt=""
@@ -339,12 +344,21 @@ const Dashboard = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold truncate tracking-tight">{order.productName}</p>
-                      <p className="text-xs text-muted-foreground font-medium">Order #{order.order_number.slice(-4)}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest font-mono">#{order.order_number.slice(-6)}</p>
+                        <span className="text-[10px] text-muted-foreground/30">•</span>
+                        <p className="text-[10px] text-muted-foreground font-medium">{order.customer_name}</p>
+                      </div>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold tracking-tighter">₹{order.total_amount}</p>
-                      <div className={`text-[10px] font-black px-1.5 py-0.5 rounded-full inline-block uppercase bg-warning/10 text-warning`}>
-                        {order.status}
+                      <div className={cn(
+                        "text-[9px] font-black px-1.5 py-0.5 rounded-md inline-block uppercase tracking-tight mt-0.5",
+                        order.status === 'delivered' ? 'bg-slate-100 text-slate-500' :
+                          order.status === 'ready' ? 'bg-green-100 text-green-700' :
+                            'bg-warning/10 text-warning'
+                      )}>
+                        {order.status === 'pending' ? 'NEW' : order.status}
                       </div>
                     </div>
                   </div>
@@ -355,8 +369,8 @@ const Dashboard = () => {
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                   <ShoppingBag className="w-8 h-8 text-muted-foreground/30" />
                 </div>
-                <p className="text-sm font-bold tracking-tight">No pending orders</p>
-                <p className="text-xs text-muted-foreground px-4 mt-1 leading-normal">New orders will show up here as they arrive.</p>
+                <p className="text-sm font-bold tracking-tight">No orders yet</p>
+                <p className="text-xs text-muted-foreground px-4 mt-1 leading-normal">Your recent sales activity will appear here.</p>
               </div>
             )}
           </div>

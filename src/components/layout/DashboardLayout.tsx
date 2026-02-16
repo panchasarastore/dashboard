@@ -31,7 +31,7 @@ const DashboardLayout = () => {
             description: `Order ${newOrder.order_number} received from ${newOrder.customer_name}`,
             action: {
               label: 'View',
-              onClick: () => navigate(`/orders/${newOrder.id}`)
+              onClick: () => navigate(`/dashboard/orders/${newOrder.id}`)
             },
             duration: 8000,
           });
