@@ -11,6 +11,7 @@ type ProductRow = Database['public']['Tables']['products']['Row'];
 export interface Order extends OrderRow {
     status: OrderRow['order_status'];
     order_date: string;
+    updated_at: string;
 }
 
 export interface OrderItem extends OrderItemRow {
@@ -20,6 +21,7 @@ export interface OrderItem extends OrderItemRow {
 }
 
 export interface OrderWithDetails extends OrderRow {
+    updated_at: string;
     items: (OrderItemRow & {
         products: {
             images: string[];
@@ -27,7 +29,7 @@ export interface OrderWithDetails extends OrderRow {
     })[];
 }
 
-export const useOrders = (searchQuery: string = '') => {
+export const useOrders = (searchQuery: string = '', statusFilter: string = 'all') => {
     const { activeStore } = useStore();
     const queryClient = useQueryClient();
     const PAGE_SIZE = 20;
@@ -81,7 +83,7 @@ export const useOrders = (searchQuery: string = '') => {
     }, [activeStore?.id, queryClient]);
 
     return useInfiniteQuery({
-        queryKey: ['orders', activeStore?.id, searchQuery],
+        queryKey: ['orders', activeStore?.id, searchQuery, statusFilter],
         queryFn: async ({ pageParam = 0 }) => {
             if (!activeStore) return { data: [], nextCursor: null };
 
@@ -97,6 +99,10 @@ export const useOrders = (searchQuery: string = '') => {
                 query = query.or(`customer_name.ilike.%${searchQuery}%,order_number.ilike.%${searchQuery}%`);
             }
 
+            if (statusFilter !== 'all') {
+                query = query.eq('order_status', statusFilter);
+            }
+
             const { data, error, count } = await query;
 
             if (error) throw error;
@@ -106,6 +112,13 @@ export const useOrders = (searchQuery: string = '') => {
             const mappedData = typedData.map(order => {
                 const items = order.items || [];
                 const firstItem = items[0];
+                const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+
+                let productName = firstItem?.product_name || `Order #${order.order_number.slice(-4)}`;
+                if (items.length > 1) {
+                    productName = `${productName} + ${items.length - 1} others`;
+                }
+
                 const firstProduct = firstItem?.products;
                 const images = firstProduct?.images || [];
                 const firstImage = Array.isArray(images) && images.length > 0 ? images[0] : null;
@@ -114,15 +127,17 @@ export const useOrders = (searchQuery: string = '') => {
                     ...order,
                     status: order.order_status,
                     order_date: order.created_at,
-                    productName: firstItem?.product_name || `Order #${order.order_number.slice(-4)}`,
+                    updated_at: order.updated_at,
+                    productName,
                     productImage: firstImage || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop', // Fallback
+                    totalQuantity: totalItems
                 };
             });
 
             const nextCursor = (count && pageParam + PAGE_SIZE < count) ? pageParam + PAGE_SIZE : null;
 
             return {
-                data: mappedData as (Order & { productName: string; productImage: string })[],
+                data: mappedData as (Order & { productName: string; productImage: string; totalQuantity: number })[],
                 nextCursor,
                 totalCount: count
             };
@@ -136,6 +151,47 @@ export const useOrders = (searchQuery: string = '') => {
 };
 
 export const useOrder = (orderId: string | undefined) => {
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        if (!orderId) return;
+
+        const channel = supabase
+            .channel(`order-detail-${orderId.slice(0, 8)}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `id=eq.${orderId}`,
+                },
+                (payload) => {
+                    console.log(`[Realtime] 📦 Order ${orderId} updated!`, payload.new);
+
+                    // Directly update cache if we have new data
+                    if (payload.new) {
+                        queryClient.setQueryData(['order', orderId], (old: any) => {
+                            if (!old) return old;
+                            return {
+                                ...old,
+                                ...payload.new,
+                                status: (payload.new as any).order_status // Map back to our flattened 'status'
+                            };
+                        });
+                    }
+
+                    // Only invalidate the list view to update tab counts
+                    queryClient.invalidateQueries({ queryKey: ['orders'] });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [orderId, queryClient]);
+
     return useQuery({
         queryKey: ['order', orderId],
         queryFn: async () => {
@@ -143,7 +199,7 @@ export const useOrder = (orderId: string | undefined) => {
 
             const { data, error } = await supabase
                 .from('orders')
-                .select('*, items:order_items(*, products(images))')
+                .select('*, items:order_items(*, products(*))') // Get products for stock
                 .eq('id', orderId)
                 .single();
 
@@ -156,9 +212,9 @@ export const useOrder = (orderId: string | undefined) => {
                 ...order,
                 status: order.order_status,
                 order_date: order.created_at,
-                order_items: (order.items || []).map((item) => ({
+                order_items: (order.items || []).map((item: any) => ({
                     ...item,
-                    product_image: (item.products as any)?.images?.[0] || null
+                    product_image: item.products?.images?.[0] || null
                 }))
             };
         },

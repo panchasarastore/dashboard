@@ -43,6 +43,8 @@ const AddProduct = () => {
       images: [],
       accepts_custom_note: false,
       product_notice: '',
+      stock_quantity: '0',
+      min_stock_level: '5',
     },
   });
 
@@ -94,6 +96,8 @@ const AddProduct = () => {
           images: imageUrls,
           accepts_custom_note: data.accepts_custom_note,
           product_notice: data.product_notice,
+          stock_quantity: Number(data.stock_quantity),
+          min_stock_level: Number(data.min_stock_level),
           is_in_stock: true,
         } as any);
 
@@ -285,6 +289,40 @@ const AddProduct = () => {
               {errors.price && (
                 <p className="text-xs text-destructive font-medium">{errors.price.message}</p>
               )}
+            </div>
+
+            {/* Inventory Section */}
+            <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-primary/5 border border-primary/10">
+              <div className="space-y-2">
+                <Label htmlFor="stock_quantity" className="text-primary font-bold">Initial Stock</Label>
+                <Input
+                  id="stock_quantity"
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  className="bg-white"
+                  {...register('stock_quantity')}
+                />
+                <p className="text-[10px] text-muted-foreground leading-tight">Quantity currently in hand</p>
+                {errors.stock_quantity && (
+                  <p className="text-xs text-destructive font-medium">{errors.stock_quantity.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="min_stock_level" className="text-primary font-bold">Low Stock Limit</Label>
+                <Input
+                  id="min_stock_level"
+                  type="number"
+                  placeholder="5"
+                  min="0"
+                  className="bg-white"
+                  {...register('min_stock_level')}
+                />
+                <p className="text-[10px] text-muted-foreground leading-tight">Trigger for restocking alerts</p>
+                {errors.min_stock_level && (
+                  <p className="text-xs text-destructive font-medium">{errors.min_stock_level.message}</p>
+                )}
+              </div>
             </div>
 
             {/* Accept Custom Description */}

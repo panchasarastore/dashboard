@@ -1,24 +1,49 @@
 import { useNavigate } from 'react-router-dom';
-import { IndianRupee, Package, Clock, ShoppingBag, Loader2, ArrowRight, Activity, Share2, ExternalLink, Plus } from 'lucide-react';
+import { IndianRupee, Package, Clock, ShoppingBag, Loader2, ArrowRight, Activity, Share2, ExternalLink, Plus, AlertTriangle, ArrowUpRight } from 'lucide-react';
 import StatCard from '@/components/dashboard/StatCard';
 import { useOrders } from '@/hooks/useOrders';
 import { useStats } from '@/hooks/useStats';
+import { useProducts } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/button';
 import { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
 import { useStore } from '@/contexts/StoreContext';
+import { cn } from '@/lib/utils';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { activeStore } = useStore();
   const { data: stats, isLoading: statsLoading } = useStats();
   const { data: infiniteOrders, isLoading: ordersLoading } = useOrders();
+  const { data: infiniteProducts, isLoading: productsLoading } = useProducts();
 
   // Flatten orders for display
   const orders = useMemo(() => {
     return infiniteOrders?.pages.flatMap(page => page.data) || [];
   }, [infiniteOrders]);
+
+  // Flatten and filter critical products
+  const criticalProducts = useMemo(() => {
+    const products = infiniteProducts?.pages.flatMap(page => page.data) || [];
+    return products.filter(p => {
+      const stock = (p as any).stock_quantity;
+      const minStock = (p as any).min_stock_level ?? 5;
+
+      // Logic: Only show if stock tracking seems 'active' for this item
+      // If stock is 0 and they haven't explicitly set a low stock limit yet (default 5),
+      // it's likely just the default value for an un-initialized item.
+      // We only show items that are actually 'Running Low' (stock > 0 and <= threshold)
+      // OR explicitly 'Out of Stock' (stock === 0) if the user has opted into tracking.
+
+      const isActuallyLow = typeof stock === 'number' && stock > 0 && stock <= minStock;
+      const isOutOfStock = typeof stock === 'number' && stock === 0 && (p as any).is_in_stock === true;
+
+      // To prevent clutter for new users who have ALL products at 0:
+      // We only show items if stock > 0 (Running Low)
+      return isActuallyLow;
+    });
+  }, [infiniteProducts]);
 
   const storeBaseUrl = import.meta.env.VITE_STORE_BASE_URL || 'http://localhost:4321';
 
@@ -104,7 +129,7 @@ const Dashboard = () => {
             Welcome back! 👋
           </h1>
           <p className="text-sm md:text-base text-muted-foreground font-medium max-w-lg">
-            Everything looks good today. You have <span className="text-primary font-bold">{pendingOrders}</span> orders requiring your attention.
+            Everything looks good today. You have <span className="text-primary font-bold">{pendingOrders}</span> orders requiring attention {criticalProducts.length > 0 && <>and <span className="text-amber-500 font-bold">{criticalProducts.length} items</span> low on stock.</>}
           </p>
         </div>
 
@@ -226,57 +251,115 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Quick Stats sidebar/Upcoming preview */}
-        <div className="dashboard-card p-6 flex flex-col">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-display font-bold text-foreground">Recent Orders</h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs font-bold text-primary group/all"
-              onClick={() => navigate('/orders')}
-            >
-              View All <ArrowRight className="w-3 h-3 ml-1 group-hover/all:translate-x-1 transition-transform" />
-            </Button>
+        {/* Sidebar Widgets */}
+        <div className="space-y-8">
+          {/* Critical Stock Widget */}
+          <div className="dashboard-card p-6 flex flex-col border-amber-200 bg-amber-50/10">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-display font-bold text-foreground flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                Critical Stock
+              </h2>
+              {criticalProducts.length > 0 && (
+                <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                  {criticalProducts.length} ITEMS
+                </span>
+              )}
+            </div>
+
+            {criticalProducts.length > 0 ? (
+              <div className="space-y-4">
+                {criticalProducts.slice(0, 3).map((product) => (
+                  <div
+                    key={product.id}
+                    className="flex items-center gap-4 p-3 rounded-2xl bg-white border border-amber-100 hover:border-amber-300 transition-all cursor-pointer group"
+                    onClick={() => navigate('/dashboard/products')}
+                  >
+                    <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                      <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold truncate tracking-tight">{product.name}</p>
+                      <p className="text-[10px] text-amber-600 font-black uppercase tracking-widest mt-0.5">
+                        {(product as any).stock_quantity ?? 0} Units Remaining
+                      </p>
+                    </div>
+                    <ArrowUpRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-amber-500 transition-colors" />
+                  </div>
+                ))}
+                {criticalProducts.length > 3 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-[10px] font-black uppercase tracking-widest text-amber-600 hover:bg-amber-100/50"
+                    onClick={() => navigate('/dashboard/products')}
+                  >
+                    View all shortages
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="py-8 text-center">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
+                  <Package className="w-6 h-6 text-emerald-600" />
+                </div>
+                <p className="text-sm font-bold text-emerald-700 tracking-tight">Inventory Healthy</p>
+                <p className="text-[10px] text-muted-foreground mt-1 px-4 leading-normal">All products are above their replenishment threshold.</p>
+              </div>
+            )}
           </div>
 
-          {upcomingOrders.length > 0 ? (
-            <div className="space-y-4 flex-1 overflow-auto max-h-[400px] pr-2 scrollbar-thin">
-              {upcomingOrders.slice(0, 4).map((order) => (
-                <div
-                  key={order.id}
-                  className="flex items-center gap-4 p-3 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer group"
-                  onClick={() => navigate(`/orders/${order.id}`)}
-                >
-                  <div className="w-12 h-12 rounded-xl overflow-hidden border border-border flex-shrink-0">
-                    <img
-                      src={order.productImage}
-                      alt=""
-                      className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold truncate">{order.productName}</p>
-                    <p className="text-xs text-muted-foreground font-medium">Order #{order.order_number.slice(-4)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold">₹{order.total_amount}</p>
-                    <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full inline-block uppercase bg-warning/10 text-warning`}>
-                      {order.status}
+          <div className="dashboard-card p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-display font-bold text-foreground">Recent Orders</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs font-bold text-primary group/all"
+                onClick={() => navigate('/dashboard/orders')}
+              >
+                View All <ArrowRight className="w-3 h-3 ml-1 group-hover/all:translate-x-1 transition-transform" />
+              </Button>
+            </div>
+
+            {upcomingOrders.length > 0 ? (
+              <div className="space-y-4 flex-1">
+                {upcomingOrders.slice(0, 4).map((order) => (
+                  <div
+                    key={order.id}
+                    className="flex items-center gap-4 p-3 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                    onClick={() => navigate(`/dashboard/orders/${order.id}`)}
+                  >
+                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-border flex-shrink-0">
+                      <img
+                        src={order.productImage}
+                        alt=""
+                        className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold truncate tracking-tight">{order.productName}</p>
+                      <p className="text-xs text-muted-foreground font-medium">Order #{order.order_number.slice(-4)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold tracking-tighter">₹{order.total_amount}</p>
+                      <div className={`text-[10px] font-black px-1.5 py-0.5 rounded-full inline-block uppercase bg-warning/10 text-warning`}>
+                        {order.status}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-10">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <ShoppingBag className="w-8 h-8 text-muted-foreground/30" />
+                ))}
               </div>
-              <p className="text-sm font-bold">No pending orders</p>
-              <p className="text-xs text-muted-foreground px-4 mt-1">New orders will show up here as they arrive.</p>
-            </div>
-          )}
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-10">
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <ShoppingBag className="w-8 h-8 text-muted-foreground/30" />
+                </div>
+                <p className="text-sm font-bold tracking-tight">No pending orders</p>
+                <p className="text-xs text-muted-foreground px-4 mt-1 leading-normal">New orders will show up here as they arrive.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

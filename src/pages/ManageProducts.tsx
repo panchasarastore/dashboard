@@ -41,16 +41,26 @@ const ManageProducts = () => {
 
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
 
   const displayProducts = useMemo(() => {
-    return infiniteData?.pages.flatMap(page => page.data) || [];
-  }, [infiniteData]);
+    let products = infiniteData?.pages.flatMap(page => page.data) || [];
+    if (showLowStockOnly) {
+      products = products.filter(p => {
+        const stock = (p as any).stock_quantity ?? 0;
+        const minStock = (p as any).min_stock_level ?? 5;
+        return p.is_in_stock && stock <= minStock;
+      });
+    }
+    return products;
+  }, [infiniteData, showLowStockOnly]);
 
   const categories = useMemo(() => {
-    if (!displayProducts.length) return ['All'];
-    const unique = Array.from(new Set(displayProducts.map(p => (p as any).category).filter(Boolean)));
+    const allProducts = infiniteData?.pages.flatMap(page => page.data) || [];
+    if (!allProducts.length) return ['All'];
+    const unique = Array.from(new Set(allProducts.map(p => (p as any).category).filter(Boolean)));
     return ['All', ...unique as string[]];
-  }, [displayProducts]);
+  }, [infiniteData]);
 
   const totalCount = infiniteData?.pages[0]?.totalCount || 0;
 
@@ -98,9 +108,38 @@ const ManageProducts = () => {
       toast.success(`${product.name} marked as ${!product.is_in_stock ? 'in stock' : 'out of stock'}`);
       queryClient.invalidateQueries({ queryKey: ['products'] });
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update stock');
+      toast.error(err.message || 'Failed to update stock status');
     } finally {
       setIsProcessing(null);
+    }
+  };
+
+  const handleUpdateStock = async (productId: string, newQuantity: number) => {
+    // Optimistic Update
+    queryClient.setQueriesData({ queryKey: ['products'] }, (old: any) => {
+      if (!old) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page: any) => ({
+          ...page,
+          data: page.data.map((p: any) =>
+            p.id === productId ? { ...p, stock_quantity: newQuantity } : p
+          )
+        }))
+      };
+    });
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ stock_quantity: newQuantity } as any)
+        .eq('id', productId);
+
+      if (error) throw error;
+      // No toast for quick updates to avoid noise, unless it fails
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update inventory');
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     }
   };
 
@@ -109,61 +148,85 @@ const ManageProducts = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-foreground mb-2">
-            Manage Products
+          <h1 className="text-3xl font-black text-foreground mb-2 flex items-center gap-3">
+            Inventory Registry
+            {showLowStockOnly && <Badge className="bg-amber-500 text-white border-0">Filtered: Low Stock</Badge>}
           </h1>
-          <p className="text-muted-foreground">
-            {totalCount} products in your store
+          <p className="text-muted-foreground font-medium">
+            {totalCount} products tracked in <span className="text-primary font-bold">{activeStore?.name}</span>
           </p>
         </div>
-        <Button onClick={() => navigate('/dashboard/add-product')}>
+        <Button onClick={() => navigate('/dashboard/add-product')} className="rounded-2xl h-12 px-6 font-bold shadow-lg shadow-primary/20">
           <Plus className="w-4 h-4 mr-2" />
-          Add Product
+          Register Product
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+      {/* Search & Filters */}
+      <div className="flex flex-col lg:flex-row gap-6 mb-10">
+        <div className="relative flex-1 group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input
-            placeholder="Search products..."
+            placeholder="Search by name or category..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-12 h-14 rounded-2xl border-2 focus:ring-0 focus:border-primary transition-all bg-card"
           />
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-          {categories.map((category) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={showLowStockOnly ? 'default' : 'outline'}
+            size="lg"
+            onClick={() => setShowLowStockOnly(!showLowStockOnly)}
+            className={cn(
+              "rounded-2xl h-14 px-6 font-black text-xs uppercase tracking-widest border-2 transition-all",
+              showLowStockOnly ? "bg-amber-500 hover:bg-amber-600 border-amber-600 shadow-lg shadow-amber-200" : "hover:border-amber-500/50"
+            )}
+          >
+            <AlertTriangle className={cn("w-4 h-4 mr-2", showLowStockOnly ? "text-white" : "text-amber-500")} />
+            Low Stock Only
+          </Button>
+
+          <div className="h-10 w-[2px] bg-muted/50 mx-2 hidden lg:block" />
+
+          {categories.slice(0, 5).map((category) => (
             <Button
               key={category}
               variant={selectedCategory === category ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedCategory(category)}
-              className="rounded-full whitespace-nowrap"
+              size="lg"
+              onClick={() => {
+                setSelectedCategory(category);
+                setShowLowStockOnly(false);
+              }}
+              className={cn(
+                "rounded-2xl h-14 px-6 font-black text-xs uppercase tracking-widest border-2 transition-all",
+                selectedCategory === category ? "shadow-lg shadow-primary/20" : ""
+              )}
             >
               {category}
             </Button>
           ))}
         </div>
       </div>
+
       {isLoading && !infiniteData ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-          <p className="text-muted-foreground italic">Fetching your products...</p>
+        <div className="flex flex-col items-center justify-center py-40 animate-pulse">
+          <Loader2 className="w-12 h-12 text-primary animate-spin mb-6" />
+          <p className="text-muted-foreground font-medium italic">Scanning inventory database...</p>
         </div>
       ) : error ? (
-        <div className="dashboard-card border-destructive/20 bg-destructive/5 text-center py-12">
-          <p className="text-destructive font-medium mb-2">Error loading products</p>
-          <p className="text-sm text-muted-foreground">{(error as any).message || 'Something went wrong'}</p>
+        <div className="bg-destructive/5 border-2 border-destructive/20 rounded-[2rem] text-center py-16">
+          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+          <p className="text-destructive font-black text-xl mb-2">Sync Interrupted</p>
+          <p className="text-muted-foreground">{(error as any).message || 'Connection lost to store registry'}</p>
         </div>
       ) : (
         <>
           {/* Products Grid */}
           {displayProducts.length > 0 ? (
-            <div className="space-y-8 animate-fade-in">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-12 animate-fade-in">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 {displayProducts.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -171,43 +234,56 @@ const ManageProducts = () => {
                     onEdit={handleEdit}
                     onDelete={(id) => setDeleteProductId(id)}
                     onToggleStock={handleToggleStock}
+                    onUpdateStock={handleUpdateStock}
                   />
                 ))}
               </div>
 
-              {hasNextPage && (
-                <div className="flex justify-center pb-8">
+              {hasNextPage && !showLowStockOnly && (
+                <div className="flex justify-center pb-20">
                   <Button
                     onClick={() => fetchNextPage()}
                     disabled={isFetchingNextPage}
                     variant="outline"
-                    className="rounded-xl px-12"
+                    className="rounded-2xl h-14 px-12 font-black text-xs uppercase tracking-widest border-2 hover:bg-primary hover:text-white hover:border-primary transition-all"
                   >
                     {isFetchingNextPage ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      <Loader2 className="w-4 h-4 animate-spin mr-3" />
                     ) : null}
-                    Load More Products
+                    Load more inventory
                   </Button>
                 </div>
               )}
             </div>
           ) : (
-            <div className="dashboard-card text-center py-16 animate-fade-in">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                <Search className="w-8 h-8 text-muted-foreground" />
+            <div className="bg-card border-2 border-dashed rounded-[3rem] text-center py-32 animate-fade-in group">
+              <div className="w-24 h-24 rounded-[2rem] bg-muted/30 flex items-center justify-center mx-auto mb-8 group-hover:scale-110 group-hover:bg-primary/5 transition-all duration-700">
+                <Search className="w-10 h-10 text-muted-foreground/40 group-hover:text-primary transition-colors" />
               </div>
-              <p className="text-lg font-medium text-foreground mb-2">
-                {searchQuery ? 'No products found' : 'No products yet'}
+              <p className="text-2xl font-black text-foreground mb-3 tracking-tight">
+                {searchQuery || showLowStockOnly ? 'No matching products' : 'Archive empty'}
               </p>
-              <p className="text-muted-foreground mb-6">
-                {searchQuery
-                  ? 'Try a different search term'
-                  : 'Add your first product to get started'}
+              <p className="text-muted-foreground font-medium max-w-xs mx-auto mb-10 leading-relaxed">
+                {searchQuery || showLowStockOnly
+                  ? 'Your current search or filter returned no inventory items.'
+                  : 'Start building your store by adding your first product position today.'}
               </p>
-              {!searchQuery && (
-                <Button onClick={() => navigate('/add-product')}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Your First Product
+              {(searchQuery || showLowStockOnly) ? (
+                <Button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setShowLowStockOnly(false);
+                    setSelectedCategory('All');
+                  }}
+                  variant="outline"
+                  className="rounded-2xl h-12 px-8 font-bold border-2"
+                >
+                  Clear all filters
+                </Button>
+              ) : (
+                <Button onClick={() => navigate('/dashboard/add-product')} className="rounded-2xl h-14 px-10 font-black text-sm uppercase tracking-widest shadow-xl shadow-primary/20">
+                  <Plus className="w-5 h-5 mr-3" />
+                  Add Product
                 </Button>
               )}
             </div>
