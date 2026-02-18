@@ -31,8 +31,40 @@ export const useStats = () => {
                     table: 'orders',
                     filter: `store_id=eq.${activeStore.id}`,
                 },
-                () => {
+                (payload: any) => {
                     console.log('[Stats Realtime] 🔔 Order change detected, refreshing stats...');
+
+                    // Optimistic/Manual cache update for status changes to avoid full re-fetch
+                    if (payload.eventType === 'UPDATE') {
+                        const oldStatus = payload.old?.order_status;
+                        const newStatus = payload.new?.order_status;
+
+                        if (oldStatus !== newStatus) {
+                            queryClient.setQueryData(['store-stats', activeStore.id], (old: StoreStats | undefined) => {
+                                if (!old) return old;
+                                const newState = { ...old };
+
+                                // Adjust pending/fulfilled counts
+                                if (oldStatus === 'completed') newState.fulfilledOrders--;
+                                else if (['pending', 'confirmed', 'preparing', 'ready'].includes(oldStatus)) newState.pendingOrders--;
+
+                                if (newStatus === 'completed') newState.fulfilledOrders++;
+                                else if (['pending', 'confirmed', 'preparing', 'ready'].includes(newStatus)) newState.pendingOrders++;
+
+                                // Adjust revenue if moving in/out of "Counted" statuses
+                                const countedStatuses = ['confirmed', 'preparing', 'ready', 'completed'];
+                                const wasCounted = countedStatuses.includes(oldStatus);
+                                const isCounted = countedStatuses.includes(newStatus);
+                                const amount = payload.new?.total_amount || 0;
+
+                                if (!wasCounted && isCounted) newState.totalRevenue += amount;
+                                else if (wasCounted && !isCounted) newState.totalRevenue -= amount;
+
+                                return newState;
+                            });
+                        }
+                    }
+
                     queryClient.invalidateQueries({ queryKey: ['store-stats', activeStore.id] });
                 }
             )
@@ -95,11 +127,12 @@ export const useStats = () => {
 
             if (productsError) throw productsError;
 
-            // 4. Total Revenue
+            // 4. Total Revenue (ONLY confirmed/completed orders)
             const { data: revenueData, error: revenueError } = await supabase
                 .from('orders')
                 .select('total_amount')
-                .eq('store_id', activeStore.id);
+                .eq('store_id', activeStore.id)
+                .in('order_status', ['confirmed', 'preparing', 'ready', 'completed']);
 
             if (revenueError) throw revenueError;
 

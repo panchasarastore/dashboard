@@ -113,31 +113,32 @@ const Dashboard = () => {
     .sort((a, b) => new Date(b.order_date).getTime() - new Date(a.order_date).getTime());
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-12">
+    <div className="max-w-6xl mx-auto space-y-8 pb-12 px-4 md:px-0">
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="animate-slide-up">
           <div className="flex items-center gap-2 mb-2">
-            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80 flex items-center gap-1.5">
-              <Activity className="w-3 h-3 text-green-500" />
-              Live Dashboard
-            </span>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-500/10 rounded-full border border-green-500/20">
+              <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-[9px] font-black uppercase tracking-wider text-green-600">
+                Live Data Link
+              </span>
+            </div>
           </div>
-          <h1 className="text-3xl md:text-5xl font-display font-black text-foreground mb-2">
+          <h1 className="text-3xl md:text-5xl font-display font-black text-foreground mb-2 tracking-tight">
             Welcome back! 👋
           </h1>
-          <p className="text-sm md:text-base text-muted-foreground font-medium max-w-lg">
+          <p className="text-sm md:text-base text-muted-foreground font-medium max-w-lg leading-relaxed">
             Everything looks good today. You have <span className="text-primary font-bold">{pendingOrders}</span> orders requiring attention {criticalProducts.length > 0 && <>and <span className="text-amber-500 font-bold">{criticalProducts.length} items</span> low on stock.</>}
           </p>
         </div>
 
         {/* Quick Actions Bar */}
-        <div className="flex flex-wrap items-center gap-3 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar animate-slide-up p-1 -m-1" style={{ animationDelay: '0.1s' }}>
           <Button
             variant="outline"
             size="sm"
-            className="rounded-xl border-dashed hover:border-primary hover:text-primary transition-all font-semibold flex items-center gap-2"
+            className="rounded-xl border-dashed hover:border-primary hover:text-primary transition-all font-semibold flex items-center gap-2 h-10 px-4"
             onClick={() => navigate('/dashboard/add-product')}
           >
             <Plus className="w-4 h-4" /> Add Product
@@ -145,17 +146,17 @@ const Dashboard = () => {
           <Button
             variant="outline"
             size="sm"
-            className="rounded-xl font-semibold flex items-center gap-2"
+            className="rounded-xl font-semibold flex items-center gap-2 h-10 px-4"
             onClick={handleShare}
           >
             <Share2 className="w-4 h-4" /> Share Store
           </Button>
           <Button
             size="sm"
-            className="rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all px-6 flex items-center gap-2"
+            className="rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all px-6 h-10 flex items-center gap-2 bg-primary text-primary-foreground"
             onClick={handleViewStore}
           >
-            <ExternalLink className="w-4 h-4" /> View Live Store
+            <ExternalLink className="w-4 h-4" /> View Store
           </Button>
         </div>
       </div>
@@ -195,48 +196,89 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-slide-up" style={{ animationDelay: '0.3s' }}>
         {/* Revenue Chart */}
-        <div className="lg:col-span-2 dashboard-card p-6 min-h-[400px] flex flex-col">
-          <div className="flex items-center justify-between mb-6">
+        <div className="lg:col-span-2 dashboard-card p-6 min-h-[380px] lg:h-[400px] flex flex-col">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl font-display font-bold text-foreground">Revenue Trend</h2>
-              <p className="text-sm text-muted-foreground font-medium">Daily earnings over the last 7 days</p>
+              <p className="text-sm text-muted-foreground font-medium">Daily earnings (Last 7 days)</p>
             </div>
-            <Activity className="w-5 h-5 text-primary/40" />
+            <Activity className="w-5 h-5 text-primary/30" />
           </div>
 
-          <div className="flex-1 w-full min-h-[250px] mt-auto">
+          <div className="flex-1 w-full min-h-[220px] mt-auto relative">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                    <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
+
+                  {/* Glow filter for the line */}
+                  <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                  </filter>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
+
+                <CartesianGrid
+                  strokeDasharray="4 4"
+                  vertical={false}
+                  stroke="hsl(var(--muted-foreground))"
+                  opacity={0.1}
+                />
+
                 <XAxis
                   dataKey="date"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
                   dy={10}
+                  padding={{ left: 10, right: 10 }}
                 />
+
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
                   tickFormatter={(value) => `₹${value}`}
+                  width={45}
+                  domain={[0, (dataMax: number) => Math.max(500, Math.ceil(dataMax / 100) * 100)]}
+                  ticks={[0, 100, 200, 300, 400, 500]}
                 />
+
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    borderColor: 'hsl(var(--border))',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: '600'
+                  cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }}
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-card/80 backdrop-blur-xl border border-primary/20 p-3 rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">{label}</p>
+                          <p className="text-sm font-display font-black text-primary">
+                            ₹{Number(payload[0].value).toLocaleString()}
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
                   }}
-                  formatter={(value) => [`₹${value}`, 'Revenue']}
                 />
+
+                {/* Glow layer */}
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={6}
+                  strokeOpacity={0.2}
+                  fill="transparent"
+                  filter="url(#glow)"
+                  activeDot={false}
+                  isAnimationActive={true}
+                />
+
+                {/* Main layer */}
                 <Area
                   type="monotone"
                   dataKey="revenue"
@@ -244,6 +286,13 @@ const Dashboard = () => {
                   strokeWidth={3}
                   fillOpacity={1}
                   fill="url(#colorRev)"
+                  activeDot={{
+                    r: 6,
+                    fill: 'hsl(var(--primary))',
+                    stroke: 'white',
+                    strokeWidth: 2,
+                    className: "shadow-lg"
+                  }}
                 />
               </AreaChart>
             </ResponsiveContainer>

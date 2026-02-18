@@ -73,6 +73,13 @@ const OrderDetails = () => {
       icon: Clock,
       color: '#f59e0b',
       className: 'bg-amber-50 text-amber-700 border-amber-200/50',
+      next: 'confirmed' as const
+    },
+    confirmed: {
+      label: 'Confirmed',
+      icon: CheckCircle,
+      color: '#3b82f6',
+      className: 'bg-blue-50 text-blue-700 border-blue-200/50',
       next: 'preparing' as const
     },
     preparing: {
@@ -87,22 +94,14 @@ const OrderDetails = () => {
       icon: Truck,
       color: '#10b981',
       className: 'bg-emerald-50 text-emerald-700 border-emerald-200/50',
-      next: 'delivered' as const
+      next: 'completed' as const
     },
-    delivered: {
-      label: 'Delivered',
+    completed: {
+      label: 'Completed',
       icon: Check,
       color: '#64748b',
       className: 'bg-slate-50 text-slate-600 border-slate-200/50',
       next: null
-    },
-    // Keep internal mapping for legacy/auto-confirmed data
-    confirmed: {
-      label: 'Confirmed',
-      icon: CheckCircle,
-      color: '#3b82f6',
-      className: 'bg-blue-50 text-blue-700 border-blue-200/50',
-      next: 'preparing' as const
     }
   };
 
@@ -140,13 +139,13 @@ const OrderDetails = () => {
     setIsUpdating(true);
     try {
       console.log(`[Supabase] 📡 Patching orders table...`);
-      const { data, error: updateError } = await supabase
-        .from('orders')
+      const { data, error: updateError } = await (supabase
+        .from('orders') as any)
         .update({
-          order_status: nextStatus,
-          updated_at: new Date().toISOString()
-        } as Database['public']['Tables']['orders']['Update'])
+          order_status: nextStatus
+        })
         .eq('id', orderId)
+        .eq('store_id', order.store_id) // Explicitly include store_id for RLS
         .select();
 
       if (updateError) throw updateError;
@@ -154,23 +153,24 @@ const OrderDetails = () => {
       console.log(`[Supabase] ✅ Successfully updated:`, data);
       toast.success(`Order moved to ${statusConfig[nextStatus].label}`);
 
-      // 2. STOCK DECREMENT LOGIC (Phase 4: Seamless fulfillment)
-      // When moving to 'ready', we decrement the stock_quantity for all items in the order
-      if (nextStatus === 'ready' && order.status !== 'ready' && order.status !== 'delivered') {
+      // 2. STOCK DECREMENT LOGIC (With Protection Flag)
+      if (nextStatus === 'ready' && !order.is_stock_decremented && order.status !== 'ready' && (order.status as any) !== 'completed') {
         console.log(`[Inventory] 📉 Decrementing stock for ${order.order_items?.length} items...`);
         const itemUpdates = order.order_items?.map(async (item: any) => {
           const currentStock = item.products?.stock_quantity ?? 0;
           const newStock = Math.max(0, currentStock - item.quantity);
 
-          return supabase
-            .from('products')
-            .update({ stock_quantity: newStock } as any)
+          return (supabase
+            .from('products') as any)
+            .update({ stock_quantity: newStock })
             .eq('id', item.product_id);
         });
 
         if (itemUpdates) {
           await Promise.all(itemUpdates);
-          console.log(`[Inventory] ✅ Stock updated successfully`);
+          // 2.1 Set the protection flag
+          await (supabase.from('orders') as any).update({ is_stock_decremented: true }).eq('id', orderId);
+          console.log(`[Inventory] ✅ Stock updated successfully & Protection Flag Set`);
         }
       }
 
@@ -193,12 +193,10 @@ const OrderDetails = () => {
     window.print();
   };
 
-  // The statuses we show in the UI (Timeline & Dropdown)
-  const statuses = ['pending', 'preparing', 'ready', 'delivered'] as (keyof typeof statusConfig)[];
+  // The linear flow of statuses for this order
+  const ORDER_FLOW = ['pending', 'confirmed', 'preparing', 'ready', 'completed'] as (keyof typeof statusConfig)[];
 
-  // Map confirmed to pending so it doesn't break the timeline index
-  const displayStatus = (order.status === 'confirmed' ? 'pending' : order.status) as keyof typeof statusConfig;
-  const currentStatusIndex = statuses.indexOf(displayStatus as any);
+  const currentStatusIndex = ORDER_FLOW.indexOf(order.status as any);
 
   return (
     <div className="max-w-7xl mx-auto pb-20 px-4 md:px-0 scroll-smooth">
@@ -237,7 +235,7 @@ const OrderDetails = () => {
             Print Summary
           </Button>
 
-          <div className="relative group/status shadow-2xl shadow-primary/10 rounded-2xl overflow-hidden">
+          <div className="relative group/status shadow-2xl shadow-primary/10 rounded-2xl overflow-hidden w-full lg:w-auto">
             <select
               disabled={isUpdating}
               value={order.status}
@@ -248,7 +246,7 @@ const OrderDetails = () => {
                 }
               }}
               className={cn(
-                "appearance-none h-14 pl-8 pr-14 font-black text-lg transition-all cursor-pointer disabled:opacity-50 outline-none w-full md:w-[220px] scale-100 hover:scale-[1.02] active:scale-95",
+                "appearance-none h-14 pl-8 pr-14 font-black text-base md:text-lg transition-all cursor-pointer disabled:opacity-50 outline-none w-full md:w-[220px] scale-100 hover:scale-[1.02] active:scale-95",
                 order.status === 'pending' ? "bg-amber-500 text-white" :
                   order.status === 'confirmed' ? "bg-blue-600 text-white" :
                     order.status === 'preparing' ? "bg-violet-600 text-white" :
@@ -256,7 +254,7 @@ const OrderDetails = () => {
                         "bg-slate-600 text-white"
               )}
             >
-              {statuses.map(s => (
+              {ORDER_FLOW.map(s => (
                 <option key={s} value={s} className="text-foreground bg-popover font-bold">
                   {statusConfig[s].label}
                 </option>
@@ -269,79 +267,52 @@ const OrderDetails = () => {
         </div>
       </div>
 
+      {/* Horizontal Timeline Header */}
+      <div className="bg-card border rounded-[2.5rem] p-8 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] print:hidden">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 relative">
+          {/* Continuous Progress Line */}
+          <div className="absolute left-[22px] md:left-0 md:right-0 top-12 md:top-[22px] h-[calc(100%-44px)] md:h-0.5 w-0.5 md:w-full bg-muted/40 z-0"></div>
+
+          {ORDER_FLOW.map((s, idx) => {
+            const cfg = statusConfig[s];
+            const Icon = cfg.icon;
+            const isCompleted = idx <= currentStatusIndex;
+            const isActive = idx === currentStatusIndex;
+
+            return (
+              <div key={s} className="flex md:flex-col items-center gap-4 md:gap-3 relative z-10 flex-1 group">
+                <div className={cn(
+                  "w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-700 border-4",
+                  isCompleted ? "bg-primary border-primary shadow-lg shadow-primary/20" : "bg-card border-muted",
+                  isActive && "ring-8 ring-primary/10"
+                )}>
+                  <Icon className={cn("w-5 h-5", isCompleted ? "text-primary-foreground" : "text-muted-foreground/30")} />
+                </div>
+                <div className="text-left md:text-center">
+                  <p className={cn(
+                    "text-[10px] font-black uppercase tracking-widest transition-colors",
+                    isCompleted ? "text-foreground" : "text-muted-foreground/40"
+                  )}>
+                    {cfg.label}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground/60 font-medium hidden md:block">
+                    {isCompleted ? (idx === currentStatusIndex ? 'Active Now' : 'Completed') : 'Next Up'}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-        {/* Left Panel: Timeline & Logistics (Lg: 3 cols) */}
-        <div className="lg:col-span-3 space-y-8 animate-slide-up print:hidden">
-          <div className="bg-card border rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
-            <div className="flex items-center gap-3 mb-8 border-b pb-4">
-              <History className="w-5 h-5 text-primary" />
-              <h3 className="text-xs uppercase font-black tracking-widest text-muted-foreground/60">Order Timeline</h3>
-            </div>
 
-            <div className="space-y-0 relative">
-              {/* Continuous Line */}
-              <div className="absolute left-[21px] top-6 bottom-6 w-0.5 bg-muted/50"></div>
 
-              {statuses.map((s, idx) => {
-                const cfg = statusConfig[s];
-                const Icon = cfg.icon;
-                const isCompleted = idx <= currentStatusIndex;
-                const isActive = idx === currentStatusIndex;
+        {/* Main Panel: Registry & Actions (Lg: 9 cols) */}
+        <div className="lg:col-span-9 space-y-8 animate-slide-up" style={{ animationDelay: '100ms' }}>
 
-                return (
-                  <div key={s} className="flex gap-4 mb-10 last:mb-0 relative group">
-                    <div className={cn(
-                      "w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-700 z-10 border-4",
-                      isCompleted ? "bg-primary border-primary shadow-lg shadow-primary/20" : "bg-card border-muted",
-                      isActive && "ring-8 ring-primary/10"
-                    )}>
-                      <Icon className={cn("w-5 h-5", isCompleted ? "text-primary-foreground" : "text-muted-foreground/30")} />
-                    </div>
-                    <div className="flex-1 pt-2">
-                      <p className={cn(
-                        "text-[11px] font-black uppercase tracking-widest transition-colors",
-                        isCompleted ? "text-foreground" : "text-muted-foreground/40"
-                      )}>
-                        {cfg.label}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground/60 font-medium mt-1">
-                        {isCompleted ? (idx === currentStatusIndex ? 'Current Status' : 'Completed') : 'Pending Action'}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="bg-primary/5 border border-primary/10 rounded-[2rem] p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <CreditCard className="w-5 h-5 text-primary" />
-              <h3 className="text-xs uppercase font-black tracking-widest text-primary/60">Logistics Data</h3>
-            </div>
-            <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-white/50 border border-primary/5">
-                <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/40 mb-1">Method</p>
-                <div className="flex items-center gap-2">
-                  {order.delivery_method === 'delivery' ? <MapPin className="w-4 h-4 text-primary" /> : <Package className="w-4 h-4 text-primary" />}
-                  <p className="font-black text-foreground capitalize">{order.delivery_method}</p>
-                </div>
-              </div>
-              <div className="p-4 rounded-2xl bg-white/50 border border-primary/5">
-                <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/40 mb-1">Payment</p>
-                <div className="flex items-center gap-2">
-                  {order.payment_method === 'ONLINE' ? <CreditCard className="w-4 h-4 text-primary" /> : <Wallet className="w-4 h-4 text-primary" />}
-                  <p className="font-black text-foreground">{order.payment_method}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Center Panel: Items & Details (Lg: 6 cols) */}
-        <div className="lg:col-span-6 space-y-8 animate-slide-up" style={{ animationDelay: '100ms' }}>
-          {/* Main Items Card */}
+          {/* Main Items Card (Order Registry) */}
           <div className="bg-card border rounded-[2.5rem] p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.02)] overflow-hidden relative">
             <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
               <Package className="w-40 h-40" />
@@ -357,8 +328,9 @@ const OrderDetails = () => {
               </span>
             </div>
 
+            {/* Items List */}
             <div className="divide-y divide-border/40">
-              {order.order_items?.map((item) => (
+              {order.order_items?.map((item: any) => (
                 <div key={item.id} className="flex gap-6 py-8 first:pt-0 last:pb-0 group">
                   <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-muted overflow-hidden flex-shrink-0 border shadow-inner group-hover:scale-105 transition-transform duration-700">
                     {item.product_image ? (
@@ -375,7 +347,7 @@ const OrderDetails = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/dashboard/products`)}  // In a real app we'd pass ?id=...
+                        onClick={() => navigate(`/dashboard/products`)}
                         className="h-7 px-2 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         Manage Stock
@@ -385,25 +357,6 @@ const OrderDetails = () => {
                       <span className="text-primary/70">Ordered: {item.quantity}</span>
                       <span className="w-1 h-1 rounded-full bg-border"></span>
                       <span>₹{item.product_price.toLocaleString()} / unit</span>
-                    </div>
-
-                    {/* Stock Insight */}
-                    <div className="mt-3 flex items-center gap-4">
-                      <div className={cn(
-                        "flex items-center gap-2 px-3 py-1 rounded-xl border text-[10px] font-black uppercase tracking-widest",
-                        (item as any).products?.stock_quantity > 10 ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                          (item as any).products?.stock_quantity > 0 ? "bg-amber-50 text-amber-700 border-amber-100" :
-                            "bg-red-50 text-red-700 border-red-100"
-                      )}>
-                        <Package className="w-3 h-3" />
-                        Stock: {(item as any).products?.stock_quantity ?? '0'}
-                      </div>
-                      {(item as any).products?.stock_quantity < item.quantity && (
-                        <div className="flex items-center gap-1.5 text-red-600 animate-pulse text-[10px] font-black uppercase tracking-widest">
-                          <AlertCircle className="w-3.5 h-3.5" />
-                          Insufficient Inventory
-                        </div>
-                      )}
                     </div>
 
                     {item.custom_note && (
@@ -437,59 +390,118 @@ const OrderDetails = () => {
                 </div>
               </div>
             </div>
+
+            {/* Intelligence & Logistics Nested Section */}
+            <div className="flex items-center justify-between mt-12 mb-8 border-b pb-6">
+              <h2 className="text-lg font-black text-foreground flex items-center gap-3">
+                <MapPin className="w-5 h-5 text-primary" />
+                Fulfillment & Logistics
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 border border-muted/50">
+                  <div className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center">
+                    {order.delivery_method === 'delivery' ? <MapPin className="w-4 h-4 text-primary" /> : <Package className="w-4 h-4 text-primary" />}
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/40">Method</p>
+                    <p className="font-black text-foreground capitalize text-xs">{order.delivery_method}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 border border-muted/50">
+                  <div className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center">
+                    {order.payment_method === 'ONLINE' ? <CreditCard className="w-4 h-4 text-primary" /> : <Wallet className="w-4 h-4 text-primary" />}
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/40">Payment</p>
+                    <p className="font-black text-foreground text-xs">{order.payment_method}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-5 rounded-2xl bg-amber-50/50 border border-amber-100 italic font-medium text-amber-800 text-[11px] leading-relaxed border-l-4 border-l-amber-400 h-full">
+                  <span className="text-[9px] uppercase font-black block mb-2 opacity-60 tracking-wider">Internal Note</span>
+                  {order.customer_notes ? `"${order.customer_notes}"` : "No special instructions provided."}
+                </div>
+              </div>
+            </div>
+
+            {order.delivery_method === 'delivery' && (
+              <div className="mt-8 pt-8 border-t border-dashed border-border/60">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                  <h3 className="text-sm font-black text-foreground flex items-center gap-3">
+                    <MapPin className="w-4 h-4 text-primary" />
+                    Drop-off Address
+                  </h3>
+                  <Button variant="outline" className="rounded-xl h-8 px-3 font-black text-[9px] uppercase tracking-widest gap-2 border-2" onClick={() => window.open(`https://www.google.com/maps?q=${order.delivery_lat},${order.delivery_lng}`, '_blank')}>
+                    <ExternalLink className="w-3 h-3" />
+                    Open Maps
+                  </Button>
+                </div>
+                <p className="text-muted-foreground font-bold text-xs mb-4 leading-relaxed">{order.delivery_address}</p>
+                {order.delivery_landmark && (
+                  <p className="text-[10px] font-bold text-muted-foreground/60"><span className="text-primary/60 uppercase tracking-widest mr-2 text-[9px]">Landmark:</span>{order.delivery_landmark}</p>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Delivery Logic */}
-          {order.delivery_method === 'delivery' && (
-            <div className="bg-card border rounded-[2.5rem] p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.02)] print:hidden">
-              <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                <h2 className="text-2xl font-black text-foreground flex items-center gap-3">
-                  <MapPin className="w-6 h-6 text-primary" />
-                  Address Intelligence
+          {/* Action Center (Sticky on Mobile) */}
+          <div className="bg-primary/5 border-2 border-primary/20 rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-primary/5 relative overflow-hidden group sticky bottom-4 md:static z-40 backdrop-blur-md">
+            <div className="absolute top-0 right-0 p-8 opacity-[0.05] pointer-events-none group-hover:scale-110 transition-transform duration-1000">
+              <MessageSquare className="w-32 h-32" />
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+              <div className="space-y-1">
+                <h2 className="text-xl md:text-2xl font-black text-foreground flex items-center gap-3">
+                  <MessageSquare className="w-5 h-5 md:w-6 h-6 text-primary fill-primary/10" />
+                  Action Center
+                  <div className="group/info relative inline-block">
+                    <AlertCircle className="w-4 h-4 text-muted-foreground/40 cursor-help hover:text-primary transition-colors" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-popover border rounded-xl shadow-2xl opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all z-50">
+                      <p className="text-[10px] leading-relaxed font-bold text-foreground italic">
+                        Use AI to generate smart replies based on the current order context.
+                      </p>
+                    </div>
+                  </div>
                 </h2>
-                <Button variant="outline" className="rounded-2xl h-11 px-6 font-black text-xs gap-2 border-2" onClick={() => window.open(`https://www.google.com/maps?q=${order.delivery_lat},${order.delivery_lng}`, '_blank')}>
-                  <ExternalLink className="w-4 h-4" />
-                  Satellite View
+                <p className="text-[10px] md:text-sm font-medium text-muted-foreground uppercase tracking-widest">Connect with {order.customer_name}</p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setShowTemplates(!showTemplates)}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl h-12 md:h-14 flex-1 md:flex-none px-6 md:px-10 font-black text-[10px] md:text-xs uppercase tracking-widest shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-3"
+                >
+                  <MessageSquare className="w-4 h-4 md:w-5 h-5 fill-current" />
+                  {showTemplates ? 'Hide AI' : 'AI Smart Reply'}
                 </Button>
               </div>
-
-              <div className="bg-muted/30 p-6 rounded-3xl mb-8 border border-muted ring-4 ring-muted/20">
-                <p className="text-foreground font-black text-xl leading-snug">{order.delivery_address}</p>
-                <div className="flex flex-wrap gap-4 mt-4">
-                  {order.delivery_landmark && (
-                    <div className="text-xs font-black text-muted-foreground bg-white/60 px-4 py-2 rounded-xl border flex items-center gap-2">
-                      <span className="text-primary/40 uppercase tracking-widest text-[9px]">Landmark</span>
-                      {order.delivery_landmark}
-                    </div>
-                  )}
-                  {order.delivery_pincode && (
-                    <div className="text-xs font-black text-muted-foreground bg-white/60 px-4 py-2 rounded-xl border flex items-center gap-2">
-                      <span className="text-primary/40 uppercase tracking-widest text-[9px]">Pincode</span>
-                      {order.delivery_pincode}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {order.delivery_lat && order.delivery_lng && (
-                <div className="aspect-[21/9] rounded-[2.5rem] overflow-hidden border-4 border-card shadow-2xl relative group">
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0, filter: 'grayscale(1) contrast(1.1) opacity(0.8)' }}
-                    loading="lazy"
-                    allowFullScreen
-                    referrerPolicy="no-referrer-when-downgrade"
-                    src={`https://www.google.com/maps?q=${order.delivery_lat},${order.delivery_lng}&output=embed`}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card/40 to-transparent pointer-events-none group-hover:opacity-0 transition-opacity"></div>
-                </div>
-              )}
             </div>
-          )}
+
+            {showTemplates && (
+              <div className="mt-6 pt-6 border-t border-primary/10 animate-in fade-in slide-in-from-top-4 duration-500">
+                <AIResponseTemplates
+                  customerName={order.customer_name}
+                  orderNumber={order.order_number}
+                  status={order.status}
+                  onClose={() => setShowTemplates(false)}
+                  onSend={(msg: string) => {
+                    const phone = order.customer_phone.replace(/\D/g, '');
+                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                    setShowTemplates(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Right Panel: Customer Insight (Lg: 3 cols) */}
+        {/* Right Panel: Customer Insight (Sidebar) */}
         <div className="lg:col-span-3 space-y-8 animate-slide-up print:hidden" style={{ animationDelay: '200ms' }}>
           <div className="bg-card border rounded-[2.5rem] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] relative overflow-hidden group">
             <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000"></div>
@@ -526,54 +538,14 @@ const OrderDetails = () => {
                 </a>
               </div>
 
-              <div className="pt-4 space-y-3">
-                <Button
-                  onClick={() => setShowTemplates(true)}
-                  className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white rounded-2xl h-16 font-black text-lg shadow-xl shadow-[#25D366]/20 transition-all active:scale-95 flex items-center justify-center gap-3"
-                >
-                  <MessageSquare className="w-7 h-7 fill-current" />
-                  AI Smart Reply
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  onClick={handleWhatsApp}
-                  className="w-full rounded-xl h-10 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all"
-                >
-                  Standard WhatsApp
-                </Button>
-              </div>
-
-              {showTemplates && (
-                <div className="mt-8">
-                  <AIResponseTemplates
-                    customerName={order.customer_name}
-                    orderNumber={order.order_number}
-                    status={order.status}
-                    onClose={() => setShowTemplates(false)}
-                    onSend={(msg) => {
-                      const phone = order.customer_phone.replace(/\D/g, '');
-                      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-                      setShowTemplates(false);
-                    }}
-                  />
+              <div className="pt-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 mb-2">Customer Profile</p>
+                <div className="p-4 rounded-2xl border bg-muted/5 shadow-inner">
+                  <p className="text-xs font-bold text-muted-foreground leading-relaxed italic">
+                    No previous purchase history found. New customer.
+                  </p>
                 </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-card border rounded-[2.5rem] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
-            <h2 className="text-xl font-black text-foreground mb-6">Internal Notes</h2>
-            <div className="space-y-4">
-              <div className="p-5 rounded-2xl bg-amber-50/50 border border-amber-100 italic font-medium text-amber-800 text-sm leading-relaxed border-l-4 border-l-amber-400">
-                {order.customer_notes ? `"${order.customer_notes}"` : "No special instructions provided by the customer."}
               </div>
-              {order.delivery_notes && (
-                <div className="p-5 rounded-2xl bg-blue-50/50 border border-blue-100 font-medium text-blue-800 text-sm leading-relaxed border-l-4 border-l-blue-400">
-                  <span className="text-[10px] uppercase font-black block mb-2 opacity-60">Fulfillment Tag</span>
-                  {order.delivery_notes}
-                </div>
-              )}
             </div>
           </div>
         </div>

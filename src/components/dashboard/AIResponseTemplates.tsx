@@ -47,7 +47,7 @@ const AIResponseTemplates: React.FC<AIResponseTemplatesProps> = ({
             message: `Great news ${customerName}! Your order #${shortOrder} is now ready for pickup. Feel free to come by whenever you're ready.`
         },
         {
-            id: 'delivered',
+            id: 'completed',
             label: 'Checking Delivery',
             category: 'logistics',
             message: `Hi ${customerName}, your order #${shortOrder} should have reached you by now. Hope you love your new crochet items! Please let us know if everything is perfect.`
@@ -64,7 +64,7 @@ const AIResponseTemplates: React.FC<AIResponseTemplatesProps> = ({
         if (status === 'pending' && t.category === 'confirmation') return true;
         if (status === 'preparing' && t.id === 'preparing') return true;
         if (status === 'ready' && t.id === 'ready') return true;
-        if (status === 'delivered' && t.id === 'delivered') return true;
+        if (status === 'completed' && t.id === 'completed') return true;
         if (t.category === 'delay') return true;
         return false;
     }).concat(templates.filter(t => !['confirmation', 'delay'].includes(t.category) && t.id !== status));

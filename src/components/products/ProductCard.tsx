@@ -19,9 +19,9 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product, onEdit, onDelete, onToggleStock, onUpdateStock }: ProductCardProps) => {
-  const stock = (product as any).stock_quantity ?? 0;
+  const stock = (product as any).stock_quantity;
   const minStock = (product as any).min_stock_level ?? 5;
-  const isLowStock = product.is_in_stock && stock <= minStock;
+  const isLowStock = product.is_in_stock && stock !== null && Number(stock) <= minStock;
 
   return (
     <div className={cn(
@@ -106,30 +106,33 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleStock, onUpdateStock }
             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 block">Inventory</span>
             <span className={cn(
               "text-lg font-black",
-              stock === 0 ? "text-red-500" : stock <= minStock ? "text-amber-500" : "text-foreground"
+              stock === null ? "text-primary" : (Number(stock) === 0 ? "text-red-500" : Number(stock) <= minStock ? "text-amber-500" : "text-foreground")
             )}>
-              {stock} <span className="text-xs text-muted-foreground/40 font-bold ml-1">UNITS</span>
+              {stock === null ? 'UNLIMITED' : stock}
+              {stock !== null && <span className="text-xs text-muted-foreground/40 font-bold ml-1">UNITS</span>}
             </span>
           </div>
 
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9 rounded-xl border-2 hover:bg-white active:scale-90 transition-all shadow-sm"
-              onClick={() => onUpdateStock(product.id, Math.max(0, stock - 1))}
-            >
-              <Minus className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9 rounded-xl border-2 hover:bg-white active:scale-90 transition-all shadow-sm"
-              onClick={() => onUpdateStock(product.id, stock + 1)}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+          {stock !== null && (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 rounded-xl border-2 hover:bg-white active:scale-90 transition-all shadow-sm"
+                onClick={() => onUpdateStock(product.id, Math.max(0, Number(stock) - 1))}
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 rounded-xl border-2 hover:bg-white active:scale-90 transition-all shadow-sm"
+                onClick={() => onUpdateStock(product.id, Number(stock) + 1)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-2">

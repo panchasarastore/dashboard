@@ -10,10 +10,11 @@ export const productSchema = z.object({
     images: z.array(z.string()).max(4, 'Maximum 4 images allowed').default([]),
     accepts_custom_note: z.boolean().default(false),
     product_notice: z.string().max(200, 'Notice is too long').optional().or(z.literal('')),
-    stock_quantity: z.string().default('0').refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
+    track_inventory: z.boolean().default(false),
+    stock_quantity: z.string().default('0').optional().refine((val) => !val || (!isNaN(Number(val)) && Number(val) >= 0), {
         message: 'Stock must be a positive number',
     }),
-    min_stock_level: z.string().default('5').refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
+    min_stock_level: z.string().default('5').optional().refine((val) => !val || (!isNaN(Number(val)) && Number(val) >= 0), {
         message: 'Low stock limit must be a positive number',
     }),
 });

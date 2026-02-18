@@ -31,8 +31,9 @@ export interface Database {
                     payment_method: string
                     time_slot: string | null
                     customer_notes: string | null
-                    order_status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered'
+                    order_status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed'
                     created_at: string
+                    updated_at: string
                 }
                 Insert: {
                     id?: string
@@ -55,8 +56,9 @@ export interface Database {
                     payment_method: string
                     time_slot?: string | null
                     customer_notes?: string | null
-                    order_status?: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered'
+                    order_status?: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed'
                     created_at?: string
+                    updated_at?: string
                 }
                 Update: {
                     id?: string
@@ -79,8 +81,9 @@ export interface Database {
                     payment_method?: string
                     time_slot?: string | null
                     customer_notes?: string | null
-                    order_status?: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered'
+                    order_status?: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed'
                     created_at?: string
+                    updated_at?: string
                 }
             }
             order_items: {
@@ -132,7 +135,10 @@ export interface Database {
                     accepts_custom_note: boolean
                     product_notice: string | null
                     is_in_stock: boolean
+                    stock_quantity: number | null
+                    min_stock_level: number | null
                     created_at: string
+                    updated_at: string
                 }
                 Insert: {
                     id?: string
@@ -144,6 +150,8 @@ export interface Database {
                     accepts_custom_note?: boolean
                     product_notice?: string | null
                     is_in_stock?: boolean
+                    stock_quantity?: number | null
+                    min_stock_level?: number | null
                     created_at?: string
                 }
                 Update: {
@@ -156,6 +164,8 @@ export interface Database {
                     accepts_custom_note?: boolean
                     product_notice?: string | null
                     is_in_stock?: boolean
+                    stock_quantity?: number | null
+                    min_stock_level?: number | null
                     created_at?: string
                 }
             }

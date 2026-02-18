@@ -48,10 +48,10 @@ const OrderRow = ({ order, onClick }: OrderRowProps) => {
       label: 'Ready',
       icon: Truck,
       className: 'bg-green-100/80 text-green-700 border-green-200/50',
-      next: 'delivered'
+      next: 'completed'
     },
-    delivered: {
-      label: 'Delivered',
+    completed: {
+      label: 'Completed',
       icon: Check,
       className: 'bg-slate-100/80 text-slate-500 border-slate-200/50',
       next: null
@@ -65,18 +65,59 @@ const OrderRow = ({ order, onClick }: OrderRowProps) => {
   const handleQuickAction = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!status.next) return;
+    const nextStatus = status.next;
+
+    // 1. Optimistic Update
+    const previousOrders = queryClient.getQueryData(['orders'] as any);
+    queryClient.setQueryData(['orders'] as any, (old: any) => {
+      if (!old) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page: any) => ({
+          ...page,
+          data: page.data.map((o: any) =>
+            o.id === order.id ? { ...o, status: nextStatus, order_status: nextStatus } : o
+          )
+        }))
+      };
+    });
 
     setIsUpdating(true);
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ order_status: status.next } as any)
+      const { error } = await (supabase
+        .from('orders') as any)
+        .update({ order_status: nextStatus })
         .eq('id', order.id);
 
       if (error) throw error;
-      toast.success(`Order #${order.order_number.slice(-4)} marked as ${statusConfig[status.next].label}`);
+      toast.success(`Order #${order.order_number.slice(-4)} marked as ${statusConfig[nextStatus].label}`);
+
+      // 2. Inventory Logic (Shared with OrderDetails)
+      if (nextStatus === 'ready' && !order.is_stock_decremented) {
+        console.log(`[Inventory] 📈 Quick Action: Decrementing stock...`);
+
+        // Fetch items for this order
+        const { data: items } = await supabase
+          .from('order_items')
+          .select('product_id, quantity')
+          .eq('order_id', order.id);
+
+        if (items) {
+          for (const item of items) {
+            await supabase.rpc('decrement_stock', {
+              p_product_id: item.product_id,
+              p_quantity: item.quantity
+            });
+          }
+          // Mark as decremented
+          await supabase.from('orders').update({ is_stock_decremented: true }).eq('id', order.id);
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ['orders'] } as any);
     } catch (err) {
+      // 3. Rollback
+      queryClient.setQueryData(['orders'] as any, previousOrders);
       toast.error('Failed to update status');
     } finally {
       setIsUpdating(false);

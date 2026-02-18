@@ -57,14 +57,39 @@ export const useOrders = (searchQuery: string = '', statusFilter: string = 'all'
                         old: payload.old
                     });
 
-                    // Only invalidate if the event is relevant (already filtered by Supabase, but good to be explicit)
-                    if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
-                        queryClient.invalidateQueries({ queryKey: ['orders', activeStore.id] });
+                    if (payload.eventType === 'INSERT') {
+                        // Optimistically ADD the new order to the first page of results
+                        queryClient.setQueryData(['orders', activeStore.id, searchQuery, statusFilter], (old: any) => {
+                            if (!old || !old.pages || old.pages.length === 0) return old;
 
-                        // If it's a specific order we might have in cache, invalidate it too
-                        if (payload.new && (payload.new as any).id) {
-                            queryClient.invalidateQueries({ queryKey: ['order', (payload.new as any).id] });
-                        }
+                            const newOrderRaw = payload.new;
+                            // Map the raw payload to our Order format (similar to queryFn logic)
+                            const mappedNewOrder = {
+                                ...newOrderRaw,
+                                status: newOrderRaw.order_status,
+                                order_date: newOrderRaw.created_at,
+                                updated_at: newOrderRaw.updated_at,
+                                productName: "New Order", // Temporary until re-fetch
+                                productImage: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop',
+                                totalQuantity: 1
+                            };
+
+                            const newPages = [...old.pages];
+                            newPages[0] = {
+                                ...newPages[0],
+                                data: [mappedNewOrder, ...newPages[0].data],
+                                totalCount: (newPages[0].totalCount || 0) + 1
+                            };
+
+                            return { ...old, pages: newPages };
+                        });
+                    }
+
+                    // Invalidate for data consistency and full mapping (product names etc)
+                    queryClient.invalidateQueries({ queryKey: ['orders', activeStore.id] });
+
+                    if (payload.new && (payload.new as any).id) {
+                        queryClient.invalidateQueries({ queryKey: ['order', (payload.new as any).id] });
                     }
                 }
             )

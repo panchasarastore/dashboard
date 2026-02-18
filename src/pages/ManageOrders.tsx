@@ -27,7 +27,7 @@ const STATUS_TABS = [
     { id: 'all', label: 'All Orders' },
     { id: 'pending', label: 'New' },
     { id: 'active', label: 'Active', statuses: ['confirmed', 'preparing', 'ready'] },
-    { id: 'delivered', label: 'Completed' },
+    { id: 'completed', label: 'Completed' },
 ];
 
 const ManageOrders = () => {
@@ -112,37 +112,37 @@ const ManageOrders = () => {
     };
 
     return (
-        <div className="max-w-6xl mx-auto pb-20 space-y-10">
+        <div className="max-w-6xl mx-auto pb-20 space-y-8 px-4 md:px-0">
             {/* Header & Stats Strip */}
             <div className="animate-slide-up">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                     <div>
                         <Button
                             variant="ghost"
                             onClick={() => navigate('/dashboard')}
-                            className="mb-4 -ml-2 text-muted-foreground hover:text-primary transition-colors h-8 px-2"
+                            className="mb-4 -ml-2 text-muted-foreground hover:text-primary transition-colors h-8 px-2 font-bold"
                         >
                             <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Dashboard
+                            Dashboard
                         </Button>
                         <h1 className="text-3xl md:text-5xl font-display font-black text-foreground mb-1 tracking-tight">
                             Manage Orders
                         </h1>
-                        <p className="text-muted-foreground font-medium flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-primary" />
-                            {totalCount} total orders recorded • Track and update your sales
+                        <p className="text-muted-foreground font-medium flex items-center gap-2 text-sm">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            {totalCount} total orders recorded • Real-time tracking
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2 p-1.5 bg-card/50 backdrop-blur-sm border rounded-2xl">
+                    <div className="flex items-center gap-1.5 p-1 bg-card/50 backdrop-blur-sm border rounded-2xl overflow-x-auto no-scrollbar max-w-full">
                         {STATUS_TABS.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
-                                    "px-5 py-2 rounded-[1rem] text-xs font-black transition-all duration-500 uppercase tracking-tighter",
+                                    "px-4 py-2 rounded-xl text-[10px] font-black transition-all duration-300 uppercase tracking-tighter whitespace-nowrap",
                                     activeTab === tab.id
-                                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105"
+                                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                                 )}
                             >

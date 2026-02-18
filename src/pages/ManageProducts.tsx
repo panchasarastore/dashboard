@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Loader2 } from 'lucide-react';
+import { Plus, Search, Loader2, AlertTriangle, AlertCircle } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProductCard from '@/components/products/ProductCard';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/useDebounce';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,9 +49,10 @@ const ManageProducts = () => {
     let products = infiniteData?.pages.flatMap(page => page.data) || [];
     if (showLowStockOnly) {
       products = products.filter(p => {
-        const stock = (p as any).stock_quantity ?? 0;
+        const stock = (p as any).stock_quantity;
         const minStock = (p as any).min_stock_level ?? 5;
-        return p.is_in_stock && stock <= minStock;
+        if (stock === null) return false;
+        return p.is_in_stock && Number(stock) <= minStock;
       });
     }
     return products;
@@ -153,7 +156,7 @@ const ManageProducts = () => {
             {showLowStockOnly && <Badge className="bg-amber-500 text-white border-0">Filtered: Low Stock</Badge>}
           </h1>
           <p className="text-muted-foreground font-medium">
-            {totalCount} products tracked in <span className="text-primary font-bold">{activeStore?.name}</span>
+            {totalCount} products tracked in <span className="text-primary font-bold">{activeStore?.store_name}</span>
           </p>
         </div>
         <Button onClick={() => navigate('/dashboard/add-product')} className="rounded-2xl h-12 px-6 font-bold shadow-lg shadow-primary/20">
@@ -239,7 +242,7 @@ const ManageProducts = () => {
                 ))}
               </div>
 
-              {hasNextPage && !showLowStockOnly && (
+              {hasNextPage && (
                 <div className="flex justify-center pb-20">
                   <Button
                     onClick={() => fetchNextPage()}

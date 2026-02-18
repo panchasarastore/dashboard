@@ -43,6 +43,7 @@ const AddProduct = () => {
       images: [],
       accepts_custom_note: false,
       product_notice: '',
+      track_inventory: false,
       stock_quantity: '0',
       min_stock_level: '5',
     },
@@ -96,8 +97,8 @@ const AddProduct = () => {
           images: imageUrls,
           accepts_custom_note: data.accepts_custom_note,
           product_notice: data.product_notice,
-          stock_quantity: Number(data.stock_quantity),
-          min_stock_level: Number(data.min_stock_level),
+          stock_quantity: data.track_inventory ? Number(data.stock_quantity) : null,
+          min_stock_level: data.track_inventory ? Number(data.min_stock_level) : 5,
           is_in_stock: true,
         } as any);
 
@@ -292,37 +293,57 @@ const AddProduct = () => {
             </div>
 
             {/* Inventory Section */}
-            <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-primary/5 border border-primary/10">
-              <div className="space-y-2">
-                <Label htmlFor="stock_quantity" className="text-primary font-bold">Initial Stock</Label>
-                <Input
-                  id="stock_quantity"
-                  type="number"
-                  placeholder="0"
-                  min="0"
-                  className="bg-white"
-                  {...register('stock_quantity')}
+            <div className="space-y-4 p-4 rounded-xl bg-primary/5 border border-primary/10">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="track_inventory" className="text-primary font-bold">Track Inventory</Label>
+                  <p className="text-[10px] text-muted-foreground leading-none">Enable stock tracking for this product</p>
+                </div>
+                <Controller
+                  name="track_inventory"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch
+                      id="track_inventory"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
                 />
-                <p className="text-[10px] text-muted-foreground leading-tight">Quantity currently in hand</p>
-                {errors.stock_quantity && (
-                  <p className="text-xs text-destructive font-medium">{errors.stock_quantity.message}</p>
-                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="min_stock_level" className="text-primary font-bold">Low Stock Limit</Label>
-                <Input
-                  id="min_stock_level"
-                  type="number"
-                  placeholder="5"
-                  min="0"
-                  className="bg-white"
-                  {...register('min_stock_level')}
-                />
-                <p className="text-[10px] text-muted-foreground leading-tight">Trigger for restocking alerts</p>
-                {errors.min_stock_level && (
-                  <p className="text-xs text-destructive font-medium">{errors.min_stock_level.message}</p>
-                )}
-              </div>
+
+              {watchAll.track_inventory && (
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-primary/10 animate-in fade-in slide-in-from-top-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="stock_quantity">Initial Stock</Label>
+                    <Input
+                      id="stock_quantity"
+                      type="number"
+                      placeholder="0"
+                      min="0"
+                      className="bg-white"
+                      {...register('stock_quantity')}
+                    />
+                    {errors.stock_quantity && (
+                      <p className="text-xs text-destructive font-medium">{errors.stock_quantity.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="min_stock_level">Low Stock Limit</Label>
+                    <Input
+                      id="min_stock_level"
+                      type="number"
+                      placeholder="5"
+                      min="0"
+                      className="bg-white"
+                      {...register('min_stock_level')}
+                    />
+                    {errors.min_stock_level && (
+                      <p className="text-xs text-destructive font-medium">{errors.min_stock_level.message}</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Accept Custom Description */}
