@@ -134,7 +134,7 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar animate-slide-up p-1 -m-1" style={{ animationDelay: '0.1s' }}>
+        <div className="flex flex-wrap items-center gap-3 animate-slide-up p-1 -m-1" style={{ animationDelay: '0.1s' }}>
           <Button
             variant="outline"
             size="sm"
