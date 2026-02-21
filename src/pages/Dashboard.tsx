@@ -117,14 +117,6 @@ const Dashboard = () => {
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="animate-slide-up">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-500/10 rounded-full border border-green-500/20">
-              <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[9px] font-black uppercase tracking-wider text-green-600">
-                Live Data Link
-              </span>
-            </div>
-          </div>
           <h1 className="text-3xl md:text-5xl font-display font-black text-foreground mb-2 tracking-tight">
             Welcome back! 👋
           </h1>

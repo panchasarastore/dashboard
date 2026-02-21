@@ -159,22 +159,6 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
           </div>
         </nav>
 
-        {/* Footer - Logout Button */}
-        <div className="p-4 border-t border-sidebar-border">
-          <Button
-            variant="ghost"
-            onClick={handleLogout}
-            className="w-full group flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
-          >
-            <div className="w-8 h-8 rounded-full bg-muted group-hover:bg-destructive/20 flex items-center justify-center transition-colors">
-              <LogOut className="w-4 h-4 text-muted-foreground group-hover:text-destructive" />
-            </div>
-            <div className="text-left">
-              <p className="text-sm font-medium">Logout</p>
-              <p className="text-[10px] opacity-70">End your session</p>
-            </div>
-          </Button>
-        </div>
       </aside>
 
       <ShareStoreModal

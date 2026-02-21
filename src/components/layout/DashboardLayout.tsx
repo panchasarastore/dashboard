@@ -1,88 +1,90 @@
-import { useState, useEffect } from 'react';
-import { Menu } from 'lucide-react';
+import { useState } from 'react';
+import { Menu, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useStore } from '@/contexts/StoreContext';
-import DashboardSidebar from './DashboardSidebar';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { config } from '@/lib/config';
+import DashboardSidebar from './DashboardSidebar';
+import { Outlet } from 'react-router-dom';
+import NotificationManager from '../notifications/NotificationManager';
+import NotificationBell from '../notifications/NotificationBell';
 
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { activeStore } = useStore();
-  const navigate = useNavigate();
+  const { signOut } = useAuth();
+  const storeBaseUrl = config.store.baseUrl;
 
-  useEffect(() => {
-    if (!activeStore?.id) return;
-
-    const channel = supabase
-      .channel(`new-orders-${activeStore.id.slice(0, 8)}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'orders',
-          filter: `store_id=eq.${activeStore.id}`,
-        },
-        (payload) => {
-          const newOrder = payload.new as any;
-          toast.success(`🎉 New Order!`, {
-            description: `Order ${newOrder.order_number} received from ${newOrder.customer_name}`,
-            action: {
-              label: 'View',
-              onClick: () => navigate(`/dashboard/orders/${newOrder.id}`)
-            },
-            duration: 8000,
-          });
-
-          // Play a subtle notification sound (optional but good for UX)
-          try {
-            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            audio.volume = 0.4;
-            audio.play();
-          } catch (e) {
-            console.log('Audio playback blocked');
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [activeStore?.id, navigate]);
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success('Logged out successfully');
+      window.location.href = `${storeBaseUrl}/login`;
+    } catch (error: any) {
+      toast.error(error.message || 'Logout failed');
+    }
+  };
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background selection:bg-primary/10">
+      {/* Background Workers */}
+      <NotificationManager />
+
       <DashboardSidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile Header */}
-        <header className="lg:hidden flex items-center justify-between p-4 border-b bg-sidebar/50 backdrop-blur-md sticky top-0 z-30">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-sm">
-              {activeStore?.logo_url ? <img src={activeStore.logo_url} className="w-5 h-5 object-contain" /> : '🏪'}
+        {/* Global Header */}
+        <header className="flex items-center justify-between p-4 px-6 md:p-6 md:px-8 border-b bg-background/50 backdrop-blur-md sticky top-0 z-30">
+          <div className="flex items-center gap-4">
+            {/* Mobile Menu Trigger */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden h-10 w-10 text-muted-foreground hover:bg-primary/5 rounded-xl"
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
+
+            {/* Store Breadcrumb/Info */}
+            <div className="flex items-center gap-3">
+              <div className="hidden lg:flex w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center text-primary shadow-sm overflow-hidden">
+                {activeStore?.logo_url ? <img src={activeStore.logo_url} alt={activeStore.store_name} className="w-6 h-6 object-contain" /> : <div className="font-bold text-sm tracking-tighter">🛒</div>}
+              </div>
+              <div className="flex flex-col">
+                <span className="font-serif font-bold text-foreground text-sm md:text-base truncate max-w-[150px] md:max-w-[300px] leading-tight">
+                  {activeStore?.store_name || 'My Dashboard'}
+                </span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-black opacity-50 hidden md:block">
+                  Live Control Panel
+                </span>
+              </div>
             </div>
-            <span className="font-serif font-semibold text-foreground truncate max-w-[150px]">
-              {activeStore?.store_name || 'Dashboard'}
-            </span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsSidebarOpen(true)}
-            className="text-muted-foreground"
-          >
-            <Menu className="h-6 w-6" />
-          </Button>
+
+          <div className="flex items-center gap-2 md:gap-4">
+            <NotificationBell />
+
+            <div className="h-8 w-[1px] bg-border mx-1" />
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="h-10 w-10 text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-xl transition-all"
+              title="Logout"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </header>
 
-        <main className="flex-1 overflow-auto">
-          <div className="p-4 md:p-8">
+        <main className="flex-1 overflow-auto bg-[#fafafa]">
+          <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
             <Outlet />
           </div>
         </main>
