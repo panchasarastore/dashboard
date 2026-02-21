@@ -136,7 +136,7 @@ export const useStats = () => {
 
             if (revenueError) throw revenueError;
 
-            const totalRevenue = (revenueData || []).reduce((sum, order) => sum + (order.total_amount || 0), 0);
+            const totalRevenue = ((revenueData as any[]) || []).reduce((sum, order) => sum + (order.total_amount || 0), 0);
 
             console.log('[useStats] Results:', {
                 totalRevenue,

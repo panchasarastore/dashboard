@@ -153,27 +153,6 @@ const OrderDetails = () => {
       console.log(`[Supabase] ✅ Successfully updated:`, data);
       toast.success(`Order moved to ${statusConfig[nextStatus].label}`);
 
-      // 2. STOCK DECREMENT LOGIC (With Protection Flag)
-      if (nextStatus === 'ready' && !order.is_stock_decremented && order.status !== 'ready' && (order.status as any) !== 'completed') {
-        console.log(`[Inventory] 📉 Decrementing stock for ${order.order_items?.length} items...`);
-        const itemUpdates = order.order_items?.map(async (item: any) => {
-          const currentStock = item.products?.stock_quantity ?? 0;
-          const newStock = Math.max(0, currentStock - item.quantity);
-
-          return (supabase
-            .from('products') as any)
-            .update({ stock_quantity: newStock })
-            .eq('id', item.product_id);
-        });
-
-        if (itemUpdates) {
-          await Promise.all(itemUpdates);
-          // 2.1 Set the protection flag
-          await (supabase.from('orders') as any).update({ is_stock_decremented: true }).eq('id', orderId);
-          console.log(`[Inventory] ✅ Stock updated successfully & Protection Flag Set`);
-        }
-      }
-
       // 3. Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -239,6 +218,8 @@ const OrderDetails = () => {
             <select
               disabled={isUpdating}
               value={order.status}
+              title="Change Order Status"
+              aria-label="Change Order Status"
               onChange={(e) => {
                 const nextStatus = e.target.value as any;
                 if (nextStatus !== order.status) {
@@ -310,7 +291,7 @@ const OrderDetails = () => {
 
 
         {/* Main Panel: Registry & Actions (Lg: 9 cols) */}
-        <div className="lg:col-span-9 space-y-8 animate-slide-up" style={{ animationDelay: '100ms' }}>
+        <div className="lg:col-span-9 space-y-8 animate-slide-up [animation-delay:100ms]">
 
           {/* Main Items Card (Order Registry) */}
           <div className="bg-card border rounded-[2.5rem] p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.02)] overflow-hidden relative">
@@ -502,7 +483,7 @@ const OrderDetails = () => {
         </div>
 
         {/* Right Panel: Customer Insight (Sidebar) */}
-        <div className="lg:col-span-3 space-y-8 animate-slide-up print:hidden" style={{ animationDelay: '200ms' }}>
+        <div className="lg:col-span-3 space-y-8 animate-slide-up print:hidden [animation-delay:200ms]">
           <div className="bg-card border rounded-[2.5rem] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] relative overflow-hidden group">
             <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000"></div>
 

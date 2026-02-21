@@ -14,19 +14,21 @@ interface ProductCardProps {
   product: Product;
   onEdit: (product: Product) => void;
   onDelete: (productId: string) => void;
+  onToggleVisibility: (productId: string) => void;
   onToggleStock: (productId: string) => void;
   onUpdateStock: (productId: string, newQuantity: number) => void;
 }
 
-const ProductCard = ({ product, onEdit, onDelete, onToggleStock, onUpdateStock }: ProductCardProps) => {
+const ProductCard = ({ product, onEdit, onDelete, onToggleVisibility, onToggleStock, onUpdateStock }: ProductCardProps) => {
   const stock = (product as any).stock_quantity;
   const minStock = (product as any).min_stock_level ?? 5;
   const isLowStock = product.is_in_stock && stock !== null && Number(stock) <= minStock;
+  const isHidden = product.status === 'hidden';
 
   return (
     <div className={cn(
       "product-card animate-slide-up bg-card border rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 group",
-      !product.is_in_stock && "opacity-75 grayscale-[0.5]"
+      isHidden && "opacity-75 grayscale-[0.5]"
     )}>
       {/* Image Section */}
       <div className="relative aspect-[4/3] overflow-hidden">
@@ -37,15 +39,23 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleStock, onUpdateStock }
         />
 
         {/* Status Overlays */}
-        {!product.is_in_stock && (
+        {isHidden && (
           <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
             <Badge className="bg-white text-black font-black uppercase tracking-widest px-4 py-2 rounded-xl scale-110 shadow-2xl">
-              Out of Stock
+              Hidden
             </Badge>
           </div>
         )}
 
-        {isLowStock && (
+        {!isHidden && !product.is_in_stock && (
+          <div className="absolute inset-0 bg-primary/10 backdrop-blur-[1px] flex items-center justify-center">
+            <Badge className="bg-primary text-white font-black uppercase tracking-widest px-4 py-2 rounded-xl scale-100 shadow-2xl">
+              Sold Out
+            </Badge>
+          </div>
+        )}
+
+        {isLowStock && !isHidden && (
           <div className="absolute top-3 left-3 flex items-center gap-2 bg-amber-500 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg animate-pulse">
             <AlertTriangle className="w-3 h-3" />
             Refill Needed
@@ -59,13 +69,13 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleStock, onUpdateStock }
                 <MoreVertical className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-2xl p-2 min-w-[180px]">
+            <DropdownMenuContent align="end" className="rounded-2xl p-2 min-w-[200px]">
               <DropdownMenuItem onClick={() => onEdit(product)} className="rounded-xl font-bold py-3 hover:bg-primary/5">
                 <Edit2 className="mr-3 h-4 w-4" />
                 Edit Settings
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onToggleStock(product.id)} className="rounded-xl font-bold py-3">
-                {product.is_in_stock ? (
+              <DropdownMenuItem onClick={() => onToggleVisibility(product.id)} className="rounded-xl font-bold py-3">
+                {product.status === 'active' ? (
                   <>
                     <EyeOff className="mr-3 h-4 w-4" />
                     Hide from Store
@@ -73,7 +83,20 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleStock, onUpdateStock }
                 ) : (
                   <>
                     <Eye className="mr-3 h-4 w-4" />
-                    Show on Store
+                    Publish to Store
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onToggleStock(product.id)} className="rounded-xl font-bold py-3">
+                {product.is_in_stock ? (
+                  <>
+                    <AlertTriangle className="mr-3 h-4 w-4 text-amber-500" />
+                    Mark Out of Stock
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-3 h-4 w-4 text-green-500" />
+                    Mark In Stock
                   </>
                 )}
               </DropdownMenuItem>
@@ -88,6 +111,7 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleStock, onUpdateStock }
           </DropdownMenu>
         </div>
       </div>
+
 
       {/* Content Section */}
       <div className="p-6">

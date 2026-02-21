@@ -210,12 +210,16 @@ const ManageOrders = () => {
                         <CalendarIcon className="w-4 h-4 text-muted-foreground" />
                         <input
                             type="date"
+                            title="Start Date"
+                            aria-label="Start Date"
                             className="bg-transparent font-bold outline-none cursor-pointer text-xs"
                             onChange={(e) => setDateRange(prev => ({ start: e.target.value, end: prev?.end || '' }))}
                         />
                         <span className="text-muted-foreground font-black text-[10px] uppercase">to</span>
                         <input
                             type="date"
+                            title="End Date"
+                            aria-label="End Date"
                             className="bg-transparent font-bold outline-none cursor-pointer text-xs"
                             onChange={(e) => setDateRange(prev => ({ start: prev?.start || '', end: e.target.value }))}
                         />

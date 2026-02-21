@@ -134,7 +134,7 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions Bar */}
-        <div className="flex flex-wrap items-center gap-3 animate-slide-up p-1 -m-1" style={{ animationDelay: '0.1s' }}>
+        <div className="flex flex-wrap items-center gap-3 animate-slide-up p-1 -m-1 [animation-delay:0.1s]">
           <Button
             variant="outline"
             size="sm"
@@ -162,7 +162,7 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 animate-slide-up [animation-delay:0.2s]">
         <StatCard
           title="Total Revenue"
           value={`₹${totalRevenue.toLocaleString()}`}
@@ -194,7 +194,7 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-slide-up" style={{ animationDelay: '0.3s' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-slide-up [animation-delay:0.3s]">
         {/* Revenue Chart */}
         <div className="lg:col-span-2 dashboard-card p-6 min-h-[380px] lg:h-[400px] flex flex-col">
           <div className="flex items-center justify-between mb-4">

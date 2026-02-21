@@ -49,6 +49,7 @@ const EditProduct = () => {
       track_inventory: false,
       stock_quantity: '0',
       min_stock_level: '5',
+      status: 'active',
     },
   });
 
@@ -80,6 +81,7 @@ const EditProduct = () => {
             track_inventory: data.stock_quantity !== null,
             stock_quantity: (data.stock_quantity ?? 0).toString(),
             min_stock_level: (data.min_stock_level ?? 5).toString(),
+            status: data.status || 'active',
           });
         }
       } catch (err: any) {
@@ -128,7 +130,7 @@ const EditProduct = () => {
 
       const cleanedImages = finalImageUrls.filter(url => url && typeof url === 'string' && url.length > 0);
 
-      const { error } = await supabase
+      const { error } = await (supabase
         .from('products')
         .update({
           name: data.name,
@@ -138,9 +140,11 @@ const EditProduct = () => {
           images: cleanedImages,
           accepts_custom_note: data.accepts_custom_note,
           product_notice: data.product_notice,
+          track_inventory: data.track_inventory,
           stock_quantity: data.track_inventory ? Number(data.stock_quantity) : null,
           min_stock_level: data.track_inventory ? Number(data.min_stock_level) : 5,
-        } as any)
+          status: data.status,
+        } as any) as any)
         .eq('id', productId);
 
       if (error) throw error;
@@ -246,6 +250,7 @@ const EditProduct = () => {
                           <img src={previewUrl} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
                           <button
                             type="button"
+                            title="Remove image"
                             onClick={() => handleRemoveImage(index)}
                             className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                           >
@@ -341,6 +346,27 @@ const EditProduct = () => {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Visibility Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5 border border-primary/10">
+              <div>
+                <Label htmlFor="status" className="text-primary font-bold">Publish to Store</Label>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Make this product visible to customers
+                </p>
+              </div>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <Switch
+                    id="status"
+                    checked={field.value === 'active'}
+                    onCheckedChange={(checked) => field.onChange(checked ? 'active' : 'hidden')}
+                  />
+                )}
+              />
             </div>
 
             <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">

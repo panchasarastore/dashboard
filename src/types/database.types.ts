@@ -137,6 +137,8 @@ export interface Database {
                     is_in_stock: boolean
                     stock_quantity: number | null
                     min_stock_level: number | null
+                    track_inventory: boolean
+                    status: 'active' | 'hidden'
                     created_at: string
                     updated_at: string
                 }
@@ -152,7 +154,10 @@ export interface Database {
                     is_in_stock?: boolean
                     stock_quantity?: number | null
                     min_stock_level?: number | null
+                    track_inventory?: boolean
+                    status?: 'active' | 'hidden'
                     created_at?: string
+                    updated_at?: string
                 }
                 Update: {
                     id?: string
@@ -166,7 +171,10 @@ export interface Database {
                     is_in_stock?: boolean
                     stock_quantity?: number | null
                     min_stock_level?: number | null
+                    track_inventory?: boolean
+                    status?: 'active' | 'hidden'
                     created_at?: string
+                    updated_at?: string
                 }
             }
             stores: {

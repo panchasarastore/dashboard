@@ -95,15 +95,38 @@ const ManageProducts = () => {
     }
   };
 
+  const handleToggleVisibility = async (productId: string) => {
+    const product = displayProducts.find(p => p.id === productId);
+    if (!product) return;
+
+    const newStatus = product.status === 'active' ? 'hidden' : 'active';
+    setIsProcessing(productId);
+    try {
+      const { error } = await (supabase
+        .from('products')
+        .update({ status: newStatus } as any) as any)
+        .eq('id', productId);
+
+      if (error) throw error;
+
+      toast.success(`${product.name} is now ${newStatus === 'active' ? 'visible' : 'hidden'} on the store`);
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update visibility status');
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
   const handleToggleStock = async (productId: string) => {
     const product = displayProducts.find(p => p.id === productId);
     if (!product) return;
 
     setIsProcessing(productId);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase
         .from('products')
-        .update({ is_in_stock: !product.is_in_stock } as any)
+        .update({ is_in_stock: !product.is_in_stock } as any) as any)
         .eq('id', productId);
 
       if (error) throw error;
@@ -133,9 +156,9 @@ const ManageProducts = () => {
     });
 
     try {
-      const { error } = await supabase
+      const { error } = await (supabase
         .from('products')
-        .update({ stock_quantity: newQuantity } as any)
+        .update({ stock_quantity: newQuantity } as any) as any)
         .eq('id', productId);
 
       if (error) throw error;
@@ -236,11 +259,13 @@ const ManageProducts = () => {
                     product={product}
                     onEdit={handleEdit}
                     onDelete={(id) => setDeleteProductId(id)}
+                    onToggleVisibility={handleToggleVisibility}
                     onToggleStock={handleToggleStock}
                     onUpdateStock={handleUpdateStock}
                   />
                 ))}
               </div>
+
 
               {hasNextPage && (
                 <div className="flex justify-center pb-20">

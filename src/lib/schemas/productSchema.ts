@@ -17,6 +17,7 @@ export const productSchema = z.object({
     min_stock_level: z.string().default('5').optional().refine((val) => !val || (!isNaN(Number(val)) && Number(val) >= 0), {
         message: 'Low stock limit must be a positive number',
     }),
+    status: z.enum(['active', 'hidden']).default('active'),
 });
 
 export type ProductFormValues = z.infer<typeof productSchema>;
