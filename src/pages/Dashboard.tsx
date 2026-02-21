@@ -10,6 +10,18 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { toast } from 'sonner';
 import { useStore } from '@/contexts/StoreContext';
 import { cn } from '@/lib/utils';
+import { Product } from '@/hooks/useProducts';
+
+interface Order {
+  id: string;
+  order_date: string;
+  total_amount: number;
+  productName: string;
+  productImage: string;
+  order_number: string;
+  customer_name: string;
+  status: string;
+}
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -20,15 +32,15 @@ const Dashboard = () => {
 
   // Flatten orders for display
   const orders = useMemo(() => {
-    return infiniteOrders?.pages.flatMap(page => page.data) || [];
+    return (infiniteOrders?.pages.flatMap(page => page.data) || []) as Order[];
   }, [infiniteOrders]);
 
   // Flatten and filter critical products
   const criticalProducts = useMemo(() => {
     const products = infiniteProducts?.pages.flatMap(page => page.data) || [];
-    return products.filter(p => {
-      const stock = (p as any).stock_quantity;
-      const minStock = (p as any).min_stock_level ?? 5;
+    return (products as Product[]).filter(p => {
+      const stock = p.stock_quantity;
+      const minStock = p.min_stock_level ?? 5;
 
       // Logic: Only show if stock tracking seems 'active' for this item
       // If stock is 0 and they haven't explicitly set a low stock limit yet (default 5),
@@ -37,19 +49,21 @@ const Dashboard = () => {
       // OR explicitly 'Out of Stock' (stock === 0) if the user has opted into tracking.
 
       const isActuallyLow = typeof stock === 'number' && stock > 0 && stock <= minStock;
-      const isOutOfStock = typeof stock === 'number' && stock === 0 && (p as any).is_in_stock === true;
+      const isOutOfStock = typeof stock === 'number' && stock === 0 && p.is_in_stock === true;
 
       // To prevent clutter for new users who have ALL products at 0:
       // We only show items if stock > 0 (Running Low)
       return isActuallyLow;
-    });
+    }) as Product[];
   }, [infiniteProducts]);
 
   const storeBaseUrl = import.meta.env.VITE_STORE_BASE_URL || 'http://localhost:4321';
 
   // Aggregate revenue data for the chart (last 7 days of activity)
-  const chartData = useMemo(() => {
-    if (!orders.length) return [];
+  const { chartData, revenueTrend } = useMemo(() => {
+    if (!orders.length) return { chartData: [], revenueTrend: null };
+
+    const todayStr = new Date().toISOString().split('T')[0];
 
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
@@ -57,16 +71,64 @@ const Dashboard = () => {
       return d.toISOString().split('T')[0];
     }).reverse();
 
+    const prev7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (i + 7));
+      return d.toISOString().split('T')[0];
+    });
+
     const dailyRevenue = orders.reduce((acc: any, order) => {
       const date = new Date(order.order_date).toISOString().split('T')[0];
       acc[date] = (acc[date] || 0) + (order.total_amount || 0);
       return acc;
     }, {});
 
-    return last7Days.map(date => ({
+    const currentRevenue = last7Days.reduce((sum, date) => sum + (dailyRevenue[date] || 0), 0);
+    const previousRevenue = prev7Days.reduce((sum, date) => sum + (dailyRevenue[date] || 0), 0);
+
+    let trend = null;
+    if (previousRevenue > 0) {
+      trend = Math.round(((currentRevenue - previousRevenue) / previousRevenue) * 100);
+    } else if (currentRevenue > 0) {
+      trend = 100;
+    }
+
+    const data = last7Days.map(date => ({
       date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      revenue: dailyRevenue[date] || 0
+      fullDate: new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      revenue: dailyRevenue[date] || 0,
+      isToday: date === todayStr
     }));
+
+    return { chartData: data, revenueTrend: trend };
+  }, [orders]);
+
+  // Compute Top Selling Products
+  const topSellingProducts = useMemo(() => {
+    const productsMap = new Map();
+    orders.forEach(order => {
+      const name = order.productName;
+      if (!name) return;
+      const current = productsMap.get(name) || {
+        name,
+        image: order.productImage,
+        count: 0,
+        revenue: 0
+      };
+      current.count += 1;
+      current.revenue += order.total_amount || 0;
+      productsMap.set(name, current);
+    });
+    return Array.from(productsMap.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 4);
+  }, [orders]);
+
+  // Compute Average Order Value
+  const avgOrderValue = useMemo(() => {
+    if (orders.length === 0) return 0;
+    const total = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+    return Math.round(total / orders.length);
   }, [orders]);
 
   const handleShare = () => {
@@ -186,48 +248,157 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-slide-up [animation-delay:0.3s]">
+      {/* Recent Orders Section (Moved above chart) */}
+      <div className="animate-slide-up [animation-delay:0.3s]">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-display font-black text-foreground flex items-center gap-2">
+            <ShoppingBag className="w-5 h-5 text-primary" />
+            Recent Orders
+          </h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs font-bold text-primary group/all"
+            onClick={() => navigate('/dashboard/orders')}
+          >
+            View All <ArrowRight className="w-3 h-3 ml-1 group-hover/all:translate-x-1 transition-transform" />
+          </Button>
+        </div>
+
+        {recentOrders.length > 0 ? (
+          <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar lg:grid lg:grid-cols-3">
+            {recentOrders.slice(0, 3).map((order) => (
+              <div
+                key={order.id}
+                className="flex-shrink-0 w-[300px] lg:w-full dashboard-card p-4 hover:border-primary/30 transition-all cursor-pointer group animate-in fade-in slide-in-from-bottom-2 duration-500"
+                onClick={() => order.id && navigate(`/dashboard/orders/${order.id}`)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden border border-border flex-shrink-0 bg-muted shadow-sm">
+                    <img
+                      src={order.productImage}
+                      alt=""
+                      className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest font-mono truncate mr-2">
+                        #{order.order_number.slice(-6)}
+                      </p>
+                      <div className={cn(
+                        "text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tight",
+                        order.status === 'delivered' ? 'bg-slate-100 text-slate-500' :
+                          order.status === 'ready' ? 'bg-green-100 text-green-700' :
+                            'bg-warning/10 text-warning'
+                      )}>
+                        {order.status === 'pending' ? 'NEW' : order.status}
+                      </div>
+                    </div>
+                    <p className="text-sm font-bold truncate tracking-tight text-foreground">{order.productName}</p>
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-[11px] text-muted-foreground font-medium truncate max-w-[120px]">{order.customer_name}</p>
+                      <p className="text-sm font-black tracking-tighter text-foreground">₹{order.total_amount}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="dashboard-card py-16 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <ShoppingBag className="w-8 h-8 text-muted-foreground/30" />
+            </div>
+            <p className="text-sm font-bold tracking-tight">No orders yet</p>
+            <p className="text-xs text-muted-foreground px-4 mt-1 leading-normal">Your recent sales activity will appear here.</p>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-slide-up [animation-delay:0.4s]">
         {/* Revenue Chart */}
-        <div className="lg:col-span-2 dashboard-card p-6 min-h-[380px] lg:h-[400px] flex flex-col">
-          <div className="flex items-center justify-between mb-4">
+        <div className="lg:col-span-2 dashboard-card p-6 min-h-[420px] flex flex-col group/chart">
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-xl font-display font-bold text-foreground">Revenue Trend</h2>
+              {revenueTrend !== null && (
+                <div className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-2",
+                  revenueTrend >= 0 ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-rose-50 text-rose-600 border border-rose-100"
+                )}>
+                  {revenueTrend >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowRight className="w-3 h-3 rotate-45" />}
+                  {Math.abs(revenueTrend)}% vs last 7 days
+                </div>
+              )}
+              <h2 className="text-xl font-display font-black text-foreground flex items-center gap-2">
+                <Activity className="w-5 h-5 text-primary" />
+                Revenue Trend
+              </h2>
               <p className="text-sm text-muted-foreground font-medium">Daily earnings (Last 7 days)</p>
             </div>
-            <Activity className="w-5 h-5 text-primary/30" />
+            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              Sales Revenue
+            </div>
           </div>
 
-          <div className="flex-1 w-full min-h-[220px] mt-auto relative">
+          <div className="flex-1 w-full min-h-[250px] mt-auto relative">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                    <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
+                    <stop offset="60%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
                     <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
 
-                  {/* Glow filter for the line */}
                   <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feGaussianBlur stdDeviation="4" result="blur" />
                     <feComposite in="SourceGraphic" in2="blur" operator="over" />
                   </filter>
                 </defs>
 
-                <CartesianGrid
-                  strokeDasharray="4 4"
-                  vertical={false}
-                  stroke="hsl(var(--muted-foreground))"
-                  opacity={0.1}
-                />
+                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="hsl(var(--muted-foreground))" opacity={0.08} />
 
                 <XAxis
                   dataKey="date"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
-                  dy={10}
-                  padding={{ left: 10, right: 10 }}
+                  tick={(props: { x: number; y: number; payload: { value: string }; index: number }) => {
+                    const { x, y, payload } = props;
+                    const item = chartData[props.index];
+                    return (
+                      <g transform={`translate(${x},${y})`}>
+                        <text
+                          x={0}
+                          y={0}
+                          dy={16}
+                          textAnchor="middle"
+                          fill="hsl(var(--muted-foreground))"
+                          fontSize={10}
+                          fontWeight={600}
+                        >
+                          {payload.value}
+                        </text>
+                        {item?.isToday && (
+                          <text
+                            x={0}
+                            y={0}
+                            dy={30}
+                            textAnchor="middle"
+                            fill="hsl(var(--primary))"
+                            fontSize={9}
+                            fontWeight={900}
+                            className="uppercase tracking-widest"
+                          >
+                            • Today
+                          </text>
+                        )}
+                      </g>
+                    );
+                  }}
+                  height={45}
+                  padding={{ left: 15, right: 15 }}
                 />
 
                 <YAxis
@@ -236,20 +407,29 @@ const Dashboard = () => {
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
                   tickFormatter={(value) => `₹${value}`}
                   width={45}
-                  domain={[0, (dataMax: number) => Math.max(500, Math.ceil(dataMax / 100) * 100)]}
-                  ticks={[0, 100, 200, 300, 400, 500]}
+                  domain={[0, (dataMax: number) => Math.max(500, Math.ceil(dataMax * 1.2 / 100) * 100)]}
                 />
 
                 <Tooltip
-                  cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }}
-                  content={({ active, payload, label }) => {
+                  cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '6 6', opacity: 0.3 }}
+                  content={({ active, payload }) => {
                     if (active && payload && payload.length) {
+                      const data = payload[0].payload;
                       return (
-                        <div className="bg-card/80 backdrop-blur-xl border border-primary/20 p-3 rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">{label}</p>
-                          <p className="text-sm font-display font-black text-primary">
-                            ₹{Number(payload[0].value).toLocaleString()}
+                        <div className="bg-background/95 backdrop-blur-md border border-primary/10 p-4 rounded-2xl shadow-xl animate-in zoom-in-95 duration-200">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-2">
+                            <Clock className="w-3 h-3" />
+                            {data.fullDate}
                           </p>
+                          <div className="flex items-center gap-3">
+                            <div className="w-1.5 h-8 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]" />
+                            <div>
+                              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter leading-none">Net Revenue</p>
+                              <p className="text-xl font-display font-black text-foreground">
+                                ₹{Number(payload[0].value).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       );
                     }
@@ -257,34 +437,25 @@ const Dashboard = () => {
                   }}
                 />
 
-                {/* Glow layer */}
+                {/* Visual Line */}
                 <Area
                   type="monotone"
                   dataKey="revenue"
                   stroke="hsl(var(--primary))"
-                  strokeWidth={6}
-                  strokeOpacity={0.2}
-                  fill="transparent"
-                  filter="url(#glow)"
-                  activeDot={false}
-                  isAnimationActive={true}
-                />
-
-                {/* Main layer */}
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={3}
+                  strokeWidth={4}
                   fillOpacity={1}
                   fill="url(#colorRev)"
+                  filter="url(#glow)"
+                  dot={{ r: 3, fill: 'hsl(var(--primary))', fillOpacity: 0.2, strokeWidth: 0 }}
                   activeDot={{
-                    r: 6,
+                    r: 8,
                     fill: 'hsl(var(--primary))',
                     stroke: 'white',
-                    strokeWidth: 2,
-                    className: "shadow-lg"
+                    strokeWidth: 3,
+                    className: "shadow-2xl brightness-125"
                   }}
+                  isAnimationActive={true}
+                  animationDuration={1500}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -292,128 +463,98 @@ const Dashboard = () => {
         </div>
 
         {/* Sidebar Widgets */}
-        <div className="space-y-8">
-          {/* Critical Stock Widget */}
-          <div className="dashboard-card p-6 flex flex-col border-amber-200 bg-amber-50/10">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-display font-bold text-foreground flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-amber-500" />
-                Critical Stock
+        <div className="space-y-6">
+          {/* Critical Stock Widget (Top Priority) */}
+          <div className="dashboard-card p-6 flex flex-col border-amber-200/50 bg-amber-50/10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-display font-black text-foreground flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                Low Stock
               </h2>
               {criticalProducts.length > 0 && (
-                <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-                  {criticalProducts.length} ITEMS
+                <span className="bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full">
+                  {criticalProducts.length}
                 </span>
               )}
             </div>
-
             {criticalProducts.length > 0 ? (
-              <div className="space-y-4">
-                {criticalProducts.slice(0, 3).map((product) => (
-                  <div
-                    key={product.id}
-                    className="flex items-center gap-4 p-3 rounded-2xl bg-white border border-amber-100 hover:border-amber-300 transition-all cursor-pointer group"
-                    onClick={() => navigate('/dashboard/products')}
-                  >
-                    <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
-                      <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
+              <div className="space-y-3">
+                {criticalProducts.slice(0, 2).map((p) => (
+                  <div key={p.id} className="flex items-center gap-3 p-2 rounded-xl bg-white border border-amber-50 group hover:border-amber-200 transition-all cursor-pointer" onClick={() => navigate('/dashboard/products')}>
+                    <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                      <img src={p.images[0]} alt="" className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold truncate tracking-tight">{product.name}</p>
-                      <p className="text-[10px] text-amber-600 font-black uppercase tracking-widest mt-0.5">
-                        {(product as any).stock_quantity ?? 0} Units Remaining
+                      <p className="text-[11px] font-bold truncate">{p.name}</p>
+                      <p className="text-[9px] text-amber-600 font-black uppercase tracking-widest">
+                        {p.stock_quantity} Left
                       </p>
                     </div>
-                    <ArrowUpRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-amber-500 transition-colors" />
                   </div>
                 ))}
-                {criticalProducts.length > 3 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-[10px] font-black uppercase tracking-widest text-amber-600 hover:bg-amber-100/50"
-                    onClick={() => navigate('/dashboard/products')}
-                  >
-                    View all shortages
-                  </Button>
-                )}
               </div>
             ) : (
-              <div className="py-8 text-center">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
-                  <Package className="w-6 h-6 text-emerald-600" />
-                </div>
-                <p className="text-sm font-bold text-emerald-700 tracking-tight">Inventory Healthy</p>
-                <p className="text-[10px] text-muted-foreground mt-1 px-4 leading-normal">All products are above their replenishment threshold.</p>
-              </div>
+              <p className="text-[10px] text-muted-foreground font-medium italic">Everything in stock!</p>
             )}
           </div>
 
-          <div className="dashboard-card p-6 flex flex-col">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-display font-bold text-foreground">Recent Orders</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs font-bold text-primary group/all"
-                onClick={() => navigate('/dashboard/orders')}
-              >
-                View All <ArrowRight className="w-3 h-3 ml-1 group-hover/all:translate-x-1 transition-transform" />
-              </Button>
+          {/* Top Selling Products Widget */}
+          <div className="dashboard-card p-6 flex flex-col bg-primary/[0.02]">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-display font-black text-foreground flex items-center gap-2">
+                <ArrowUpRight className="w-5 h-5 text-primary" />
+                Top Selling
+              </h2>
             </div>
 
-            {recentOrders.length > 0 ? (
-              <div className="space-y-4 flex-1">
-                {recentOrders.slice(0, 5).map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex items-center gap-4 p-3 rounded-2xl hover:bg-muted/50 transition-colors cursor-pointer group"
-                    onClick={() => {
-                      if (order.id) {
-                        navigate(`/dashboard/orders/${order.id}`);
-                      } else {
-                        toast.error("Order ID missing");
-                      }
-                    }}
-                  >
-                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-border flex-shrink-0 bg-muted">
-                      <img
-                        src={order.productImage}
-                        alt=""
-                        className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                      />
+            {topSellingProducts.length > 0 ? (
+              <div className="space-y-4">
+                {topSellingProducts.map((p, i) => (
+                  <div key={p.name} className="flex items-center gap-3 group">
+                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-muted border border-border/50 shrink-0">
+                      <img src={p.image} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold truncate tracking-tight">{order.productName}</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest font-mono">#{order.order_number.slice(-6)}</p>
-                        <span className="text-[10px] text-muted-foreground/30">•</span>
-                        <p className="text-[10px] text-muted-foreground font-medium">{order.customer_name}</p>
-                      </div>
+                      <p className="text-xs font-bold text-foreground truncate">{p.name}</p>
+                      <p className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter">
+                        {p.count} Sales • ₹{p.revenue.toLocaleString()}
+                      </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold tracking-tighter">₹{order.total_amount}</p>
-                      <div className={cn(
-                        "text-[9px] font-black px-1.5 py-0.5 rounded-md inline-block uppercase tracking-tight mt-0.5",
-                        order.status === 'delivered' ? 'bg-slate-100 text-slate-500' :
-                          order.status === 'ready' ? 'bg-green-100 text-green-700' :
-                            'bg-warning/10 text-warning'
-                      )}>
-                        {order.status === 'pending' ? 'NEW' : order.status}
-                      </div>
+                    <div className="w-6 h-6 rounded-lg bg-primary/5 flex items-center justify-center text-[10px] font-black text-primary">
+                      #{i + 1}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center py-10">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                  <ShoppingBag className="w-8 h-8 text-muted-foreground/30" />
-                </div>
-                <p className="text-sm font-bold tracking-tight">No orders yet</p>
-                <p className="text-xs text-muted-foreground px-4 mt-1 leading-normal">Your recent sales activity will appear here.</p>
-              </div>
+              <p className="text-xs text-muted-foreground italic py-4">Not enough data yet</p>
             )}
+          </div>
+
+          {/* Quick Insights Widget */}
+          <div className="dashboard-card p-6 flex flex-col">
+            <h2 className="text-lg font-display font-black text-foreground mb-5 uppercase tracking-tighter">Insights</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 border border-transparent hover:border-primary/10 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <IndianRupee className="w-4 h-4 text-primary" />
+                  </div>
+                  <span className="text-xs font-bold text-muted-foreground">Avg. Order Value</span>
+                </div>
+                <span className="text-sm font-black text-foreground">₹{avgOrderValue.toLocaleString()}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 border border-transparent hover:border-primary/10 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <Activity className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <span className="text-xs font-bold text-muted-foreground">Order Velocity</span>
+                </div>
+                <span className="text-sm font-black text-foreground">{(orders.length / 7).toFixed(1)}/day</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

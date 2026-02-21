@@ -12,7 +12,11 @@ import { Button } from '@/components/ui/button';
 import { Store, ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const StoreSwitcher = () => {
+interface StoreSwitcherProps {
+    isCollapsed?: boolean;
+}
+
+const StoreSwitcher = ({ isCollapsed }: StoreSwitcherProps) => {
     const { stores, activeStore, setActiveStore, loading } = useStore();
 
     if (loading || stores.length === 0) return null;
@@ -20,12 +24,15 @@ const StoreSwitcher = () => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-[200px] justify-between bg-card border-border hover:bg-accent/50">
-                    <div className="flex items-center gap-2 truncate">
-                        <Store className="w-4 h-4 text-primary" />
-                        <span className="truncate">{activeStore?.store_name || 'Select Store'}</span>
+                <Button variant="outline" className={cn(
+                    "justify-between bg-card border-border hover:bg-accent/50 transition-all duration-300",
+                    isCollapsed ? "w-12 h-12 p-0 rounded-xl" : "w-full min-w-[200px]"
+                )}>
+                    <div className={cn("flex items-center gap-2 truncate", isCollapsed && "justify-center w-full")}>
+                        <Store className="w-4 h-4 text-primary shrink-0" />
+                        {!isCollapsed && <span className="truncate">{activeStore?.store_name || 'Select Store'}</span>}
                     </div>
-                    <ChevronDown className="w-4 h-4 opacity-50 ml-2" />
+                    {!isCollapsed && <ChevronDown className="w-4 h-4 opacity-50 ml-2 shrink-0" />}
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-[240px]">

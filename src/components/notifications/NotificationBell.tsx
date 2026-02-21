@@ -16,18 +16,27 @@ import { useNavigate } from 'react-router-dom';
 
 const NotificationBell = () => {
     const [notifications, setNotifications] = useState<DashboardNotification[]>([]);
+    const [animate, setAnimate] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
         // Initial load from local state (Manager handles persistence)
         const handleUpdate = (e: any) => {
-            setNotifications(e.detail);
+            const newNotifications = e.detail;
+            const newUnread = newNotifications.filter((n: any) => !n.isRead).length;
+            const currentUnread = notifications.filter(n => !n.isRead).length;
+
+            if (newUnread > currentUnread) {
+                setAnimate(true);
+                setTimeout(() => setAnimate(false), 500);
+            }
+            setNotifications(newNotifications);
         };
 
         window.addEventListener('notifications-updated', handleUpdate);
 
         return () => window.removeEventListener('notifications-updated', handleUpdate);
-    }, []);
+    }, [notifications]);
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -58,10 +67,18 @@ const NotificationBell = () => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-primary/5 active:scale-95 transition-all">
-                    <Bell className="h-5 w-5 text-muted-foreground" />
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                        "relative h-11 w-11 rounded-full bg-background border border-border/50 shadow-sm hover:shadow-md hover:bg-primary/[0.03] hover:border-primary/20 active:scale-95 transition-all duration-300 group",
+                        animate && "animate-bounce"
+                    )}
+                >
+                    <div className="absolute inset-0 bg-primary/5 rounded-full scale-0 group-hover:scale-105 transition-transform duration-500 blur-md opacity-0 group-hover:opacity-100" />
+                    <Bell className={cn("h-5 w-5 transition-colors z-10", unreadCount > 0 ? "text-primary stroke-[2.5]" : "text-muted-foreground")} />
                     {unreadCount > 0 && (
-                        <Badge className="absolute -top-1 -right-1 h-5 min-w-[20px] flex items-center justify-center bg-primary text-white text-[10px] font-black border-2 border-background p-0 px-1 rounded-full animate-in zoom-in">
+                        <Badge className="absolute -top-0.5 -right-0.5 h-6 min-w-[24px] flex items-center justify-center bg-primary text-white text-[11px] font-black border-[3px] border-background p-0 px-1 rounded-full shadow-lg z-20">
                             {unreadCount > 9 ? '9+' : unreadCount}
                         </Badge>
                     )}

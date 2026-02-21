@@ -150,6 +150,11 @@ const OrderDetails = () => {
 
       if (updateError) throw updateError;
 
+      // 2. Check if update actually changed anything (RLS check)
+      if (!data || data.length === 0) {
+        throw new Error('Update failed: No permissions or order not found. This might be an RLS policy issue.');
+      }
+
       console.log(`[Supabase] ✅ Successfully updated:`, data);
       toast.success(`Order moved to ${statusConfig[nextStatus].label}`);
 

@@ -9,12 +9,25 @@ import DashboardSidebar from './DashboardSidebar';
 import { Outlet } from 'react-router-dom';
 import NotificationManager from '../notifications/NotificationManager';
 import NotificationBell from '../notifications/NotificationBell';
+import { PlusCircle, Share2, Eye, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import ShareStoreModal from '../dashboard/ShareStoreModal';
+import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const { activeStore } = useStore();
   const { signOut } = useAuth();
+  const navigate = useNavigate();
   const storeBaseUrl = config.store.baseUrl;
+  const fullStoreUrl = `${storeBaseUrl}/${activeStore?.store_url_slug || ''}`;
 
   const handleLogout = async () => {
     try {
@@ -23,6 +36,14 @@ const DashboardLayout = () => {
       window.location.href = `${storeBaseUrl}/login`;
     } catch (error: any) {
       toast.error(error.message || 'Logout failed');
+    }
+  };
+
+  const handleViewStore = () => {
+    if (activeStore?.store_url_slug) {
+      window.open(fullStoreUrl, '_blank');
+    } else {
+      toast.error('Store link not available');
     }
   };
 
@@ -38,38 +59,88 @@ const DashboardLayout = () => {
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Global Header */}
-        <header className="flex items-center justify-between p-4 px-6 md:p-6 md:px-8 border-b bg-background/50 backdrop-blur-md sticky top-0 z-30">
-          <div className="flex items-center gap-4">
+        <header className="flex items-center justify-between h-20 px-4 md:px-8 border-b bg-background/50 backdrop-blur-md sticky top-0 z-30">
+          <div className="flex items-center gap-4 min-w-0">
             {/* Mobile Menu Trigger */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden h-10 w-10 text-muted-foreground hover:bg-primary/5 rounded-xl"
+              className="lg:hidden h-10 w-10 text-muted-foreground hover:bg-primary/5 rounded-xl shrink-0"
             >
               <Menu className="h-6 w-6" />
             </Button>
 
-            {/* Store Breadcrumb/Info */}
-            <div className="flex items-center gap-3">
-              <div className="hidden lg:flex w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center text-primary shadow-sm overflow-hidden">
-                {activeStore?.logo_url ? <img src={activeStore.logo_url} alt={activeStore.store_name} className="w-6 h-6 object-contain" /> : <div className="font-bold text-sm tracking-tighter">🛒</div>}
-              </div>
-              <div className="flex flex-col">
-                <span className="font-serif font-bold text-foreground text-sm md:text-base truncate max-w-[150px] md:max-w-[300px] leading-tight">
-                  {activeStore?.store_name || 'My Dashboard'}
-                </span>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-black opacity-50 hidden md:block">
+            {/* Store Branding */}
+            <div className="flex flex-col min-w-0">
+              <h2 className="font-serif font-black text-foreground text-sm md:text-lg tracking-tighter truncate leading-tight">
+                {activeStore?.store_name || 'My Dashboard'}
+              </h2>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] md:text-[10px] text-primary font-black uppercase tracking-[0.2em]">
                   Live Control Panel
                 </span>
+                <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
-            <NotificationBell />
+          <div className="flex items-center gap-2 md:gap-4 shrink-0">
+            {/* Desktop Actions */}
+            <div className="hidden md:flex items-center gap-2">
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/dashboard/add-product')}
+                      className="h-9 px-4 gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary hover:border-primary/30 rounded-full font-bold text-xs uppercase tracking-widest transition-all"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      Add Product
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="font-bold text-[10px] uppercase bg-primary text-white border-none">Quickly add a new item</TooltipContent>
+                </Tooltip>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="h-9 px-4 gap-2 text-muted-foreground hover:text-foreground rounded-full font-bold text-xs uppercase tracking-widest"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Share
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleViewStore}
+                  className="h-9 px-4 gap-2 text-muted-foreground hover:text-foreground rounded-full font-bold text-xs uppercase tracking-widest"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  View Store
+                </Button>
+              </TooltipProvider>
+            </div>
+
+            {/* Mobile Actions (Condensed) */}
+            <div className="md:hidden flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => navigate('/dashboard/add-product')}
+                className="h-9 w-9 border-primary/20 text-primary rounded-full shrink-0"
+              >
+                <PlusCircle className="w-4 h-4" />
+              </Button>
+            </div>
 
             <div className="h-8 w-[1px] bg-border mx-1" />
+
+            <NotificationBell />
 
             <Button
               variant="ghost"
@@ -82,6 +153,12 @@ const DashboardLayout = () => {
             </Button>
           </div>
         </header>
+
+        <ShareStoreModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          storeUrl={fullStoreUrl}
+        />
 
         <main className="flex-1 overflow-auto bg-[#fafafa]">
           <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
