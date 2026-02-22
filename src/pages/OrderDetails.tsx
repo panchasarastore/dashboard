@@ -254,35 +254,53 @@ const OrderDetails = () => {
       </div>
 
       {/* Horizontal Timeline Header */}
-      <div className="bg-card border rounded-[2.5rem] p-8 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] print:hidden">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 relative">
+      <div className="bg-card/40 backdrop-blur-md border rounded-[3rem] p-10 mb-10 shadow-2xl shadow-primary/5 print:hidden relative overflow-hidden group/timeline">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent pointer-events-none" />
+
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-10 md:gap-4 relative px-4">
           {/* Continuous Progress Line */}
-          <div className="absolute left-[22px] md:left-0 md:right-0 top-12 md:top-[22px] h-[calc(100%-44px)] md:h-0.5 w-0.5 md:w-full bg-muted/40 z-0"></div>
+          <div className="absolute left-[38px] md:left-8 md:right-8 top-16 md:top-[34px] h-[calc(100%-80px)] md:h-[2px] w-[2px] md:w-[calc(100%-64px)] bg-muted/20 z-0">
+            <div
+              className="h-full bg-primary transition-all duration-1000 shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]"
+              style={{ width: `${(currentStatusIndex / (ORDER_FLOW.length - 1)) * 100}%` }}
+            />
+          </div>
 
           {ORDER_FLOW.map((s, idx) => {
             const cfg = statusConfig[s];
             const Icon = cfg.icon;
-            const isCompleted = idx <= currentStatusIndex;
+            const isCompleted = idx < currentStatusIndex;
             const isActive = idx === currentStatusIndex;
+            const isFuture = idx > currentStatusIndex;
 
             return (
-              <div key={s} className="flex md:flex-col items-center gap-4 md:gap-3 relative z-10 flex-1 group">
+              <div key={s} className="flex md:flex-col items-center gap-6 md:gap-4 relative z-10 flex-1 group/step">
                 <div className={cn(
-                  "w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-700 border-4",
-                  isCompleted ? "bg-primary border-primary shadow-lg shadow-primary/20" : "bg-card border-muted",
-                  isActive && "ring-8 ring-primary/10"
+                  "w-14 h-14 md:w-16 md:h-16 rounded-[1.75rem] flex items-center justify-center transition-all duration-700 border-2 relative",
+                  isCompleted ? "bg-primary border-primary shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)]" :
+                    isActive ? "bg-primary border-primary shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)] scale-110" :
+                      "bg-card/80 border-border/50"
                 )}>
-                  <Icon className={cn("w-5 h-5", isCompleted ? "text-primary-foreground" : "text-muted-foreground/30")} />
+                  {isActive && (
+                    <div className="absolute inset-0 rounded-[1.75rem] animate-ping bg-primary/20" />
+                  )}
+                  <Icon className={cn("w-6 h-6 md:w-7 md:h-7 transition-all duration-500",
+                    (isCompleted || isActive) ? "text-primary-foreground" : "text-muted-foreground/20"
+                  )} />
                 </div>
+
                 <div className="text-left md:text-center">
                   <p className={cn(
-                    "text-[10px] font-black uppercase tracking-widest transition-colors",
-                    isCompleted ? "text-foreground" : "text-muted-foreground/40"
+                    "text-[10px] md:text-xs font-black uppercase tracking-[0.15em] transition-colors mb-1",
+                    (isCompleted || isActive) ? "text-foreground" : "text-muted-foreground/40"
                   )}>
                     {cfg.label}
                   </p>
-                  <p className="text-[9px] text-muted-foreground/60 font-medium hidden md:block">
-                    {isCompleted ? (idx === currentStatusIndex ? 'Active Now' : 'Completed') : 'Next Up'}
+                  <p className={cn(
+                    "text-[9px] font-bold uppercase tracking-widest",
+                    isActive ? "text-primary" : "text-muted-foreground/40"
+                  )}>
+                    {isActive ? 'Active Now' : isCompleted ? 'Completed' : 'Next Up'}
                   </p>
                 </div>
               </div>

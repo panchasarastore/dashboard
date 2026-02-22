@@ -12,6 +12,7 @@ import NotificationBell from '../notifications/NotificationBell';
 import { PlusCircle, Share2, Eye, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ShareStoreModal from '../dashboard/ShareStoreModal';
+import { ThemeToggle } from './ThemeToggle';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -73,14 +74,17 @@ const DashboardLayout = () => {
 
             {/* Store Branding */}
             <div className="flex flex-col min-w-0">
-              <h2 className="font-serif font-black text-foreground text-sm md:text-lg tracking-tighter truncate leading-tight">
+              <h2 className="font-display font-black text-foreground text-lg md:text-2xl tracking-tight truncate leading-none mb-1">
                 {activeStore?.store_name || 'My Dashboard'}
               </h2>
               <div className="flex items-center gap-2">
-                <span className="text-[9px] md:text-[10px] text-primary font-black uppercase tracking-[0.2em]">
+                <span className="text-[10px] md:text-[11px] text-primary font-black uppercase tracking-[0.2em] drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.3)]">
                   Live Control Panel
                 </span>
-                <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+                <div className="relative flex h-2 w-2">
+                  <div className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></div>
+                  <div className="relative inline-flex rounded-full h-2 w-2 bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -88,57 +92,15 @@ const DashboardLayout = () => {
           <div className="flex items-center gap-2 md:gap-4 shrink-0">
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center gap-2">
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate('/dashboard/add-product')}
-                      className="h-9 px-4 gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary hover:border-primary/30 rounded-full font-bold text-xs uppercase tracking-widest transition-all"
-                    >
-                      <PlusCircle className="w-4 h-4" />
-                      Add Product
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="font-bold text-[10px] uppercase bg-primary text-white border-none">Quickly add a new item</TooltipContent>
-                </Tooltip>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsShareModalOpen(true)}
-                  className="h-9 px-4 gap-2 text-muted-foreground hover:text-foreground rounded-full font-bold text-xs uppercase tracking-widest"
-                >
-                  <Share2 className="w-4 h-4" />
-                  Share
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleViewStore}
-                  className="h-9 px-4 gap-2 text-muted-foreground hover:text-foreground rounded-full font-bold text-xs uppercase tracking-widest"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  View Store
-                </Button>
-              </TooltipProvider>
             </div>
 
             {/* Mobile Actions (Condensed) */}
             <div className="md:hidden flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => navigate('/dashboard/add-product')}
-                className="h-9 w-9 border-primary/20 text-primary rounded-full shrink-0"
-              >
-                <PlusCircle className="w-4 h-4" />
-              </Button>
             </div>
 
             <div className="h-8 w-[1px] bg-border mx-1" />
+
+            <ThemeToggle />
 
             <NotificationBell />
 
@@ -160,7 +122,7 @@ const DashboardLayout = () => {
           storeUrl={fullStoreUrl}
         />
 
-        <main className="flex-1 overflow-auto bg-[#fafafa]">
+        <main className="flex-1 overflow-auto bg-background">
           <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
             <Outlet />
           </div>

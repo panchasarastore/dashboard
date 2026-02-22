@@ -14,49 +14,51 @@ interface StatCardProps {
 
 const StatCard = ({ title, value, subtitle, icon: Icon, trend, variant = 'default' }: StatCardProps) => {
   const variantStyles = {
-    default: 'hover:border-muted-foreground/20',
-    primary: 'bg-primary/5 border-primary/20 hover:border-primary/40',
-    success: 'bg-green-500/5 border-green-500/20 hover:border-green-500/40',
-    warning: 'bg-amber-500/5 border-amber-500/20 hover:border-amber-500/40',
+    default: 'bg-card/40 hover:bg-card/60 border-border/50 hover:border-primary/20',
+    primary: 'bg-primary/[0.03] border-primary/10 hover:border-primary/30',
+    success: 'bg-green-500/[0.03] border-green-500/10 hover:border-green-500/30',
+    warning: 'bg-amber-500/[0.03] border-amber-500/10 hover:border-amber-500/30',
   };
 
   const iconStyles = {
-    default: 'bg-muted text-muted-foreground border-muted-foreground/10',
-    primary: 'bg-primary/20 text-primary border-primary/20',
-    success: 'bg-green-500/20 text-green-600 border-green-500/20',
-    warning: 'bg-amber-500/20 text-amber-600 border-amber-500/20',
+    default: 'bg-muted/40 text-muted-foreground border-border/50',
+    primary: 'bg-primary/20 text-primary border-primary/20 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]',
+    success: 'bg-green-500/20 text-green-500 border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]',
+    warning: 'bg-amber-500/20 text-amber-500 border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.1)]',
   };
 
   return (
-    <div className={`stat-card relative overflow-hidden group ${variantStyles[variant]} animate-fade-in`}>
+    <div className={`stat-card relative overflow-hidden group backdrop-blur-md transition-all duration-500 ${variantStyles[variant]} animate-fade-in`}>
       {/* Background Glow Effect */}
-      <div className={`absolute -right-4 -top-4 w-20 h-20 rounded-full blur-3xl opacity-20 transition-opacity group-hover:opacity-40 
+      <div className={`absolute -right-4 -top-8 w-32 h-32 rounded-full blur-[80px] opacity-0 group-hover:opacity-20 transition-opacity duration-700 
         ${variant === 'primary' ? 'bg-primary' : variant === 'success' ? 'bg-green-500' : variant === 'warning' ? 'bg-amber-500' : 'bg-muted-foreground'}`}
       />
 
       <div className="flex items-start justify-between relative z-10">
-        <div className="flex-1">
-          <p className="text-xs md:text-sm font-medium text-muted-foreground mb-1 uppercase tracking-wider">{title}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] md:text-xs font-black text-muted-foreground/50 mb-2 uppercase tracking-[0.2em]">{title}</p>
           <div className="flex items-baseline gap-2">
-            <p className="text-2xl md:text-3xl font-display font-bold text-foreground tracking-tight">{value}</p>
+            <p className="text-2xl md:text-3xl font-display font-black text-foreground tracking-tight group-hover:scale-[1.02] transition-transform duration-500 origin-left truncate">
+              {value}
+            </p>
           </div>
 
-          {subtitle && (
-            <p className="text-[10px] md:text-xs text-muted-foreground/70 mt-1 font-medium">{subtitle}</p>
-          )}
-
           {trend && (
-            <div className={`flex items-center gap-1.5 mt-3 text-xs font-semibold ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-              <span className={`px-1.5 py-0.5 rounded-md ${trend.isPositive ? 'bg-green-100' : 'bg-red-100'}`}>
+            <div className={`flex items-center gap-1.5 mt-4 text-[11px] font-black ${trend.isPositive ? 'text-green-500' : 'text-red-500'}`}>
+              <span className={`px-2 py-0.5 rounded-full flex items-center gap-1 ${trend.isPositive ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
                 {trend.isPositive ? '↑' : '↓'} {trend.value}%
               </span>
-              <span className="text-muted-foreground font-normal">vs last month</span>
+              <span className="text-muted-foreground/60 font-medium uppercase tracking-tighter">vs last month</span>
             </div>
+          )}
+
+          {subtitle && !trend && (
+            <p className="text-[10px] md:text-xs text-muted-foreground/60 mt-1.5 font-bold uppercase tracking-wide truncate">{subtitle}</p>
           )}
         </div>
 
-        <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl border ${iconStyles[variant]} flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-sm`}>
-          <Icon className="w-5 h-5 md:w-6 md:h-6" />
+        <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl border ${iconStyles[variant]} flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-[6deg] shadow-xl group-hover:shadow-2xl shrink-0`}>
+          <Icon className="w-6 h-6 md:w-7 md:h-7" />
         </div>
       </div>
     </div>

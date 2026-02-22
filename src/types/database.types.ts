@@ -139,6 +139,7 @@ export interface Database {
                     min_stock_level: number | null
                     track_inventory: boolean
                     status: 'active' | 'hidden'
+                    category: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -156,6 +157,7 @@ export interface Database {
                     min_stock_level?: number | null
                     track_inventory?: boolean
                     status?: 'active' | 'hidden'
+                    category?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -173,6 +175,7 @@ export interface Database {
                     min_stock_level?: number | null
                     track_inventory?: boolean
                     status?: 'active' | 'hidden'
+                    category?: string | null
                     created_at?: string
                     updated_at?: string
                 }

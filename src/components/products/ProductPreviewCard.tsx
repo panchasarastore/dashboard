@@ -10,21 +10,21 @@ interface ProductPreviewCardProps {
   acceptCustomDescription: boolean;
 }
 
-const ProductPreviewCard = ({ 
-  name, 
-  description, 
-  price, 
-  image, 
+const ProductPreviewCard = ({
+  name,
+  description,
+  price,
+  image,
   notice,
-  acceptCustomDescription 
+  acceptCustomDescription
 }: ProductPreviewCardProps) => {
   return (
     <div className="product-card max-w-sm">
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         {image ? (
-          <img 
-            src={image} 
+          <img
+            src={image}
             alt={name || 'Product preview'}
             className="w-full h-full object-cover"
           />
@@ -35,7 +35,7 @@ const ProductPreviewCard = ({
           </div>
         )}
         {notice && (
-          <Badge 
+          <Badge
             className="absolute top-3 left-3 bg-warning text-warning-foreground text-xs"
           >
             {notice}
@@ -45,10 +45,10 @@ const ProductPreviewCard = ({
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-serif font-semibold text-lg text-foreground leading-tight mb-2">
+        <h3 className="font-display font-semibold text-lg text-foreground leading-tight mb-2">
           {name || 'Product Name'}
         </h3>
-        
+
         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
           {description || 'Product description will appear here...'}
         </p>

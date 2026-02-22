@@ -122,7 +122,7 @@ const NotificationBell = () => {
                                 <div className="flex items-center gap-3 w-full">
                                     <div className={cn(
                                         "p-2 rounded-xl border shrink-0",
-                                        !n.isRead ? "bg-white shadow-sm border-primary/10" : "bg-muted border-transparent"
+                                        !n.isRead ? "bg-card shadow-sm border-primary/10" : "bg-muted border-transparent"
                                     )}>
                                         {getIcon(n.type)}
                                     </div>

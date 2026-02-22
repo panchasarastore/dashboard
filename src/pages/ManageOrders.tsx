@@ -6,14 +6,10 @@ import {
     Loader2,
     ArrowLeft,
     Filter,
-    SlidersHorizontal,
     Download,
     CheckCircle2,
-    TrendingUp,
     Clock,
     Package,
-    Calendar as CalendarIcon,
-    X
 } from 'lucide-react';
 import OrderRow from '@/components/dashboard/OrderRow';
 import { Button } from '@/components/ui/button';
@@ -22,11 +18,19 @@ import { useOrders } from '@/hooks/useOrders';
 import { useStats } from '@/hooks/useStats';
 import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const STATUS_TABS = [
     { id: 'all', label: 'All Orders' },
     { id: 'pending', label: 'New' },
-    { id: 'active', label: 'Active', statuses: ['confirmed', 'preparing', 'ready'] },
+    { id: 'confirmed', label: 'Confirmed' },
+    { id: 'preparing', label: 'Preparing' },
+    { id: 'ready', label: 'Ready' },
     { id: 'completed', label: 'Completed' },
 ];
 
@@ -34,7 +38,6 @@ const ManageOrders = () => {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState('all');
-    const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
     const debouncedSearch = useDebounce(searchQuery, 500);
     const [isExporting, setIsExporting] = useState(false);
 
@@ -52,29 +55,16 @@ const ManageOrders = () => {
     const orders = useMemo(() => {
         let allOrders = infiniteData?.pages.flatMap(page => page.data) || [];
 
-        // Frontend filtering for search and date range
+        // Frontend filtering for search
         let filtered = allOrders.filter(order => {
             const matchesQuery = order.customer_name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
                 order.order_number.toLowerCase().includes(debouncedSearch.toLowerCase());
 
-            const dateMatch = !dateRange || (
-                (!dateRange.start || new Date(order.order_date) >= new Date(dateRange.start)) &&
-                (!dateRange.end || new Date(order.order_date) <= new Date(dateRange.end + 'T23:59:59'))
-            );
-
-            return matchesQuery && dateMatch;
+            return matchesQuery;
         });
 
-        // Filter by tab
-        if (activeTab === 'active') {
-            return filtered.filter(o => ['confirmed', 'preparing', 'ready'].includes(o.status as string));
-        }
-        if (activeTab !== 'all') {
-            return filtered.filter(o => o.status === activeTab);
-        }
-
         return filtered;
-    }, [infiniteData, activeTab, debouncedSearch, dateRange]);
+    }, [infiniteData, activeTab, debouncedSearch]);
 
     const totalCount = infiniteData?.pages[0]?.totalCount || 0;
 
@@ -134,7 +124,7 @@ const ManageOrders = () => {
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-1.5 p-1 bg-card/50 backdrop-blur-sm border rounded-2xl overflow-x-auto no-scrollbar max-w-full">
+                    <div className="flex items-center gap-1.5 p-1 bg-card/50 backdrop-blur-sm border rounded-2xl overflow-x-auto hide-scrollbar max-w-full">
                         {STATUS_TABS.map((tab) => (
                             <button
                                 key={tab.id}
@@ -193,7 +183,7 @@ const ManageOrders = () => {
             </div>
 
             {/* Toolbar */}
-            <div className="flex flex-col md:flex-row items-center gap-4 bg-card/30 backdrop-blur-md p-4 rounded-[1.5rem] border animate-fade-in delay-100">
+            <div className="flex flex-col md:flex-row items-center gap-4 bg-card/30 backdrop-blur-md p-4 rounded-[1.5rem] border animate-slide-up delay-100">
                 <div className="relative flex-1 w-full group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40 transition-colors group-focus-within:text-primary" />
                     <Input
@@ -205,45 +195,34 @@ const ManageOrders = () => {
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    {/* Date Range Picker */}
-                    <div className="hidden lg:flex items-center bg-card border rounded-2xl h-12 px-4 gap-3 text-sm">
-                        <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-                        <input
-                            type="date"
-                            title="Start Date"
-                            aria-label="Start Date"
-                            className="bg-transparent font-bold outline-none cursor-pointer text-xs"
-                            onChange={(e) => setDateRange(prev => ({ start: e.target.value, end: prev?.end || '' }))}
-                        />
-                        <span className="text-muted-foreground font-black text-[10px] uppercase">to</span>
-                        <input
-                            type="date"
-                            title="End Date"
-                            aria-label="End Date"
-                            className="bg-transparent font-bold outline-none cursor-pointer text-xs"
-                            onChange={(e) => setDateRange(prev => ({ start: prev?.start || '', end: e.target.value }))}
-                        />
-                        {dateRange && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDateRange(null)}
-                                className="h-6 w-6 p-0 rounded-full hover:bg-destructive/10 hover:text-destructive"
-                            >
-                                <X className="w-3 h-3" />
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="rounded-2xl h-12 flex-1 md:flex-none font-bold gap-2 px-6 hover:bg-primary/5 hover:text-primary transition-all">
+                                <Filter className="w-4 h-4" />
+                                {STATUS_TABS.find(t => t.id === activeTab)?.label || 'Status'}
                             </Button>
-                        )}
-                    </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-2xl p-2 min-w-[180px]">
+                            {STATUS_TABS.map((tab) => (
+                                <DropdownMenuItem
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={cn(
+                                        "rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-widest cursor-pointer",
+                                        activeTab === tab.id ? "bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    {tab.label}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
-                    <Button variant="outline" className="rounded-2xl h-12 flex-1 md:flex-none font-bold gap-2 px-6 hover:bg-primary/5 hover:text-primary transition-all">
-                        <Filter className="w-4 h-4" />
-                        Status
-                    </Button>
                     <Button
                         variant="outline"
                         onClick={handleExport}
                         disabled={isExporting}
-                        className="rounded-2xl h-12 flex-1 md:flex-none font-black gap-2 px-6 bg-foreground text-background hover:bg-foreground/90 hover:scale-105 active:scale-95 transition-all"
+                        className="rounded-2xl h-12 flex-1 md:flex-none font-black gap-2 px-6 bg-foreground text-background hover:bg-foreground/90 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-foreground/10"
                     >
                         {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                         Export
@@ -251,94 +230,50 @@ const ManageOrders = () => {
                 </div>
             </div>
 
-            {/* Mobile Date Filter Summary */}
-            {dateRange && (
-                <div className="lg:hidden flex items-center justify-between bg-primary/5 border border-primary/10 p-4 rounded-2xl animate-fade-in">
-                    <div className="flex items-center gap-3">
-                        <CalendarIcon className="w-4 h-4 text-primary" />
-                        <span className="text-xs font-bold text-primary italic">
-                            {dateRange.start || 'Start'} — {dateRange.end || 'End'}
-                        </span>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => setDateRange(null)} className="h-8 px-3 text-[10px] font-black uppercase text-primary">Clear Filter</Button>
-                </div>
-            )}
-
             {/* Order List */}
-            <div className="space-y-4 animate-fade-in delay-200">
+            <div className="space-y-4 animate-slide-up delay-200">
                 {isLoading && !infiniteData ? (
-                    <div className="flex flex-col items-center justify-center py-24 animate-fade-in">
-                        <div className="relative">
-                            <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-                            <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full"></div>
-                        </div>
+                    <div className="flex flex-col items-center justify-center py-24">
+                        <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
                         <p className="text-muted-foreground font-medium italic">Scanning for orders...</p>
                     </div>
                 ) : error ? (
-                    <div className="bg-destructive/5 border border-destructive/20 rounded-[2rem] p-12 text-center max-w-2xl mx-auto shadow-sm">
-                        <div className="w-16 h-16 bg-destructive/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Filter className="w-8 h-8 text-destructive" />
-                        </div>
+                    <div className="bg-destructive/5 border border-destructive/20 rounded-[2rem] p-12 text-center">
                         <p className="text-destructive font-bold text-lg mb-1">Error loading orders</p>
-                        <p className="text-sm text-muted-foreground font-medium italic">{(error as any).message || 'Something went wrong while fetching data'}</p>
+                        <p className="text-sm text-muted-foreground italic">{(error as any).message || 'Something went wrong'}</p>
                     </div>
                 ) : (
-                    <div className="animate-fade-in">
+                    <>
                         {orders.length > 0 ? (
-                            <>
-                                <div className="grid grid-cols-1 gap-1">
-                                    {orders.map((order) => (
-                                        <OrderRow
-                                            key={order.id}
-                                            order={order as any}
-                                            onClick={() => navigate(`/dashboard/orders/${order.id}`)}
-                                        />
-                                    ))}
-                                </div>
-
+                            <div className="grid grid-cols-1 gap-1">
+                                {orders.map((order) => (
+                                    <OrderRow
+                                        key={order.id}
+                                        order={order as any}
+                                        onClick={() => navigate(`/dashboard/orders/${order.id}`)}
+                                    />
+                                ))}
                                 {hasNextPage && (
                                     <div className="mt-12 flex justify-center">
                                         <Button
                                             onClick={() => fetchNextPage()}
                                             disabled={isFetchingNextPage}
                                             variant="outline"
-                                            className="rounded-2xl h-12 px-12 border-2 hover:bg-primary/5 hover:text-primary transition-all font-bold"
+                                            className="rounded-2xl h-12 px-12 font-bold transition-all"
                                         >
-                                            {isFetchingNextPage ? (
-                                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                            ) : (
-                                                <ShoppingBag className="w-4 h-4 mr-2" />
-                                            )}
-                                            {isFetchingNextPage ? 'Loading...' : 'Load More Orders'}
+                                            {isFetchingNextPage ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Load More Orders'}
                                         </Button>
                                     </div>
                                 )}
-                            </>
+                            </div>
                         ) : (
-                            <div className="bg-card rounded-[3rem] border border-dashed border-border p-24 text-center shadow-sm">
-                                <div className="w-24 h-24 rounded-[2rem] bg-muted/40 flex items-center justify-center mx-auto mb-8 animate-pulse">
-                                    <ShoppingBag className="w-12 h-12 text-muted-foreground/40" />
-                                </div>
-                                <h3 className="text-2xl font-display font-black text-foreground mb-3">
-                                    {searchQuery ? 'No matching orders found' : 'No orders in this category'}
-                                </h3>
-                                <p className="text-muted-foreground max-w-md mx-auto font-medium text-lg leading-relaxed">
-                                    {searchQuery
-                                        ? `We couldn't find any orders matching "${searchQuery}". Try a different spelling or order number.`
-                                        : 'When customers start placing orders, they will appear here filtered by status.'}
-                                </p>
-                                {searchQuery && (
-                                    <Button
-                                        variant="link"
-                                        onClick={() => { setSearchQuery(''); setActiveTab('all'); }}
-                                        className="mt-6 text-primary font-bold text-lg underline-offset-8"
-                                    >
-                                        Clear all filters
-                                    </Button>
-                                )}
+                            <div className="bg-card rounded-[3rem] border border-dashed p-24 text-center">
+                                <ShoppingBag className="w-12 h-12 text-muted-foreground/40 mx-auto mb-6" />
+                                <h3 className="text-2xl font-black text-foreground mb-3">No orders found</h3>
+                                <p className="text-muted-foreground max-w-md mx-auto">Try adjusting your search or filter.</p>
                             </div>
                         )}
-                    </div>
+                    </>
                 )}
             </div>
         </div>

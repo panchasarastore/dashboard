@@ -102,9 +102,9 @@ const ManageProducts = () => {
     const newStatus = product.status === 'active' ? 'hidden' : 'active';
     setIsProcessing(productId);
     try {
-      const { error } = await (supabase
+      const { error } = await supabase
         .from('products')
-        .update({ status: newStatus } as any) as any)
+        .update({ status: newStatus })
         .eq('id', productId);
 
       if (error) throw error;
@@ -124,9 +124,9 @@ const ManageProducts = () => {
 
     setIsProcessing(productId);
     try {
-      const { error } = await (supabase
+      const { error } = await supabase
         .from('products')
-        .update({ is_in_stock: !product.is_in_stock } as any) as any)
+        .update({ is_in_stock: !product.is_in_stock })
         .eq('id', productId);
 
       if (error) throw error;
@@ -156,9 +156,9 @@ const ManageProducts = () => {
     });
 
     try {
-      const { error } = await (supabase
+      const { error } = await supabase
         .from('products')
-        .update({ stock_quantity: newQuantity } as any) as any)
+        .update({ stock_quantity: newQuantity })
         .eq('id', productId);
 
       if (error) throw error;

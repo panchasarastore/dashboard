@@ -1,16 +1,17 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { IndianRupee, Package, Clock, ShoppingBag, Loader2, ArrowRight, Activity, Share2, ExternalLink, Plus, AlertTriangle, ArrowUpRight } from 'lucide-react';
 import StatCard from '@/components/dashboard/StatCard';
 import { useOrders } from '@/hooks/useOrders';
 import { useStats } from '@/hooks/useStats';
 import { useProducts } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/button';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
 import { useStore } from '@/contexts/StoreContext';
 import { cn } from '@/lib/utils';
 import { Product } from '@/hooks/useProducts';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Order {
   id: string;
@@ -26,6 +27,17 @@ interface Order {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { activeStore } = useStore();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('all');
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Store Owner';
   const { data: stats, isLoading: statsLoading } = useStats();
   const { data: infiniteOrders, isLoading: ordersLoading } = useOrders();
   const { data: infiniteProducts, isLoading: productsLoading } = useProducts();
@@ -180,39 +192,14 @@ const Dashboard = () => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="animate-slide-up">
           <h1 className="text-3xl md:text-5xl font-display font-black text-foreground mb-2 tracking-tight">
-            Welcome back! 👋
+            <span className="text-gradient">{getGreeting()}, {displayName}</span> 👋
           </h1>
           <p className="text-sm md:text-base text-muted-foreground font-medium max-w-lg leading-relaxed">
             Everything looks good today. You have <span className="text-primary font-bold">{pendingOrders}</span> orders requiring attention {criticalProducts.length > 0 && <>and <span className="text-amber-500 font-bold">{criticalProducts.length} items</span> low on stock.</>}
           </p>
         </div>
 
-        {/* Quick Actions Bar */}
-        <div className="flex flex-wrap items-center gap-3 animate-slide-up p-1 -m-1 [animation-delay:0.1s]">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl border-dashed hover:border-primary hover:text-primary transition-all font-semibold flex items-center gap-2 h-10 px-4"
-            onClick={() => navigate('/dashboard/add-product')}
-          >
-            <Plus className="w-4 h-4" /> Add Product
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl font-semibold flex items-center gap-2 h-10 px-4"
-            onClick={handleShare}
-          >
-            <Share2 className="w-4 h-4" /> Share Store
-          </Button>
-          <Button
-            size="sm"
-            className="rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all px-6 h-10 flex items-center gap-2 bg-primary text-primary-foreground"
-            onClick={handleViewStore}
-          >
-            <ExternalLink className="w-4 h-4" /> View Store
-          </Button>
-        </div>
+
       </div>
 
       {/* Stats Grid */}
@@ -266,44 +253,61 @@ const Dashboard = () => {
         </div>
 
         {recentOrders.length > 0 ? (
-          <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar lg:grid lg:grid-cols-3">
-            {recentOrders.slice(0, 3).map((order) => (
+          <div className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory hide-scrollbar -mx-4 px-4 md:-mx-0 md:px-0">
+            {recentOrders.slice(0, 6).map((order) => (
               <div
                 key={order.id}
-                className="flex-shrink-0 w-[300px] lg:w-full dashboard-card p-4 hover:border-primary/30 transition-all cursor-pointer group animate-in fade-in slide-in-from-bottom-2 duration-500"
+                className="flex-shrink-0 w-[320px] md:w-[400px] snap-start dashboard-card p-6 hover:border-primary/30 transition-all cursor-pointer group animate-in fade-in slide-in-from-bottom-2 duration-500 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.4)]"
                 onClick={() => order.id && navigate(`/dashboard/orders/${order.id}`)}
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl overflow-hidden border border-border flex-shrink-0 bg-muted shadow-sm">
+                <div className="flex items-center gap-5">
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden border border-border/50 flex-shrink-0 bg-muted shadow-inner relative group-hover:border-primary/20 transition-colors">
                     <img
                       src={order.productImage}
                       alt=""
-                      className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest font-mono truncate mr-2">
-                        #{order.order_number.slice(-6)}
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] font-mono truncate mr-2 opacity-60">
+                        #{order.order_number.slice(-8)}
                       </p>
                       <div className={cn(
-                        "text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tight",
-                        order.status === 'delivered' ? 'bg-slate-100 text-slate-500' :
-                          order.status === 'ready' ? 'bg-green-100 text-green-700' :
-                            'bg-warning/10 text-warning'
+                        "text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest",
+                        order.status === 'delivered' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10' :
+                          order.status === 'ready' ? 'bg-primary/10 text-primary border border-primary/10' :
+                            'bg-amber-500/10 text-amber-500 border border-amber-500/10'
                       )}>
                         {order.status === 'pending' ? 'NEW' : order.status}
                       </div>
                     </div>
-                    <p className="text-sm font-bold truncate tracking-tight text-foreground">{order.productName}</p>
-                    <div className="flex items-center justify-between mt-1">
-                      <p className="text-[11px] text-muted-foreground font-medium truncate max-w-[120px]">{order.customer_name}</p>
-                      <p className="text-sm font-black tracking-tighter text-foreground">₹{order.total_amount}</p>
+                    <p className="text-base font-display font-black truncate tracking-tight text-foreground group-hover:text-primary transition-colors">
+                      {order.productName}
+                    </p>
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-xs text-muted-foreground font-bold truncate max-w-[150px]">{order.customer_name}</p>
+                      <p className="text-lg font-display font-black tracking-tighter text-foreground">
+                        ₹{order.total_amount.toLocaleString()}
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
             ))}
+            {/* View All Card */}
+            {recentOrders.length > 6 && (
+              <div
+                className="flex-shrink-0 w-[200px] snap-start dashboard-card p-6 flex flex-col items-center justify-center gap-4 border-dashed hover:border-primary/50 transition-all cursor-pointer group"
+                onClick={() => navigate('/dashboard/orders')}
+              >
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <ArrowRight className="w-6 h-6 text-primary" />
+                </div>
+                <p className="text-xs font-black uppercase tracking-widest text-primary">View All Orders</p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="dashboard-card py-16 flex flex-col items-center justify-center text-center">
@@ -480,7 +484,7 @@ const Dashboard = () => {
             {criticalProducts.length > 0 ? (
               <div className="space-y-3">
                 {criticalProducts.slice(0, 2).map((p) => (
-                  <div key={p.id} className="flex items-center gap-3 p-2 rounded-xl bg-white border border-amber-50 group hover:border-amber-200 transition-all cursor-pointer" onClick={() => navigate('/dashboard/products')}>
+                  <div key={p.id} className="flex items-center gap-3 p-2 rounded-xl bg-card border border-amber-500/10 group hover:border-amber-500/30 transition-all cursor-pointer" onClick={() => navigate('/dashboard/products')}>
                     <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                       <img src={p.images[0]} alt="" className="w-full h-full object-cover" />
                     </div>

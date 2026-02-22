@@ -17,6 +17,8 @@ import MyComponent from "./pages/test";
 
 import DashboardLayout from "./components/layout/DashboardLayout";
 
+import { ThemeProvider } from "./contexts/ThemeContext";
+
 const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -28,33 +30,36 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <StoreProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <TooltipProvider>
+        <AuthProvider>
+          <StoreProvider>
 
-              {/* Dashboard Layout Group */}
-              <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-                <Route index element={<Dashboard />} />
-                <Route path="add-product" element={<AddProduct />} />
-                <Route path="products" element={<ManageProducts />} />
-                <Route path="orders" element={<ManageOrders />} />
-                <Route path="edit-product/:productId" element={<EditProduct />} />
-                <Route path="orders/:orderId" element={<OrderDetails />} />
-                <Route path="test" element={<MyComponent />} />
-              </Route>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<Login />} />
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </StoreProvider>
-      </AuthProvider>
-    </TooltipProvider>
+                {/* Dashboard Layout Group */}
+                <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                  <Route index element={<Dashboard />} />
+                  <Route path="add-product" element={<AddProduct />} />
+                  <Route path="products" element={<ManageProducts />} />
+                  <Route path="orders" element={<ManageOrders />} />
+                  <Route path="edit-product/:productId" element={<EditProduct />} />
+                  <Route path="orders/:orderId" element={<OrderDetails />} />
+                  <Route path="test" element={<MyComponent />} />
+                </Route>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </StoreProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

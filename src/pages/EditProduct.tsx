@@ -130,7 +130,7 @@ const EditProduct = () => {
 
       const cleanedImages = finalImageUrls.filter(url => url && typeof url === 'string' && url.length > 0);
 
-      const { error } = await (supabase
+      const { error } = await supabase
         .from('products')
         .update({
           name: data.name,
@@ -144,7 +144,7 @@ const EditProduct = () => {
           stock_quantity: data.track_inventory ? Number(data.stock_quantity) : null,
           min_stock_level: data.track_inventory ? Number(data.min_stock_level) : 5,
           status: data.status,
-        } as any) as any)
+        })
         .eq('id', productId);
 
       if (error) throw error;
@@ -219,7 +219,7 @@ const EditProduct = () => {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <h1 className="text-3xl font-serif font-bold text-foreground mb-2">Edit Product</h1>
+        <h1 className="text-3xl font-display font-bold text-foreground mb-2">Edit Product</h1>
         <p className="text-muted-foreground">Update the details of your product.</p>
       </div>
 
@@ -398,7 +398,7 @@ const EditProduct = () => {
 
         <div className="lg:sticky lg:top-8 h-fit">
           <div className="mb-4">
-            <h2 className="text-lg font-serif font-semibold text-foreground">Live Preview</h2>
+            <h2 className="text-lg font-display font-semibold text-foreground">Live Preview</h2>
             <p className="text-sm text-muted-foreground">This is how your product will appear</p>
           </div>
           <ProductPreviewCard
@@ -413,14 +413,14 @@ const EditProduct = () => {
       </div>
 
       <Dialog open={isCropModalOpen} onOpenChange={setIsCropModalOpen}>
-        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-[2rem]">
+        <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden rounded-[2rem] max-h-[90vh] flex flex-col">
           <div className="p-6 pb-0">
             <DialogHeader>
               <DialogTitle className="text-2xl font-display font-bold">Crop Product Image</DialogTitle>
               <DialogDescription>Drag and zoom to frame your product perfectly.</DialogDescription>
             </DialogHeader>
           </div>
-          <div className="p-6">
+          <div className="p-8 overflow-y-auto">
             {tempImageSrc && (
               <ImageCropper
                 imageSrc={tempImageSrc}

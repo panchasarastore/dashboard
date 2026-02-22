@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, ArrowLeft, Loader2, X, Plus, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Loader2, X, ImageIcon, Download, CheckCircle2, Clock, Package, Plus, Minus } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useStore } from '@/contexts/StoreContext';
 import { supabase } from '@/lib/supabase';
@@ -16,6 +16,58 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { productSchema, ProductFormValues } from '@/lib/schemas/productSchema';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import ImageCropper from '@/components/products/ImageCropper';
+
+interface StockStepperProps {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+}
+
+const StockStepper = ({ value, onChange, label }: StockStepperProps) => {
+  const numValue = parseInt(value) || 0;
+
+  const handleDecrement = () => {
+    onChange(Math.max(0, numValue - 1).toString());
+  };
+
+  const handleIncrement = () => {
+    onChange((numValue + 1).toString());
+  };
+
+  return (
+    <div className="flex items-center gap-3 bg-card/50 backdrop-blur-md border border-primary/10 rounded-2xl p-1.5 shadow-sm group hover:border-primary/20 transition-all">
+      <button
+        type="button"
+        title="Decrease stock"
+        aria-label="Decrease stock"
+        onClick={handleDecrement}
+        className="w-10 h-10 rounded-xl flex items-center justify-center bg-muted/50 text-muted-foreground hover:bg-primary/10 hover:text-primary active:scale-90 transition-all"
+      >
+        <Minus className="w-4 h-4" />
+      </button>
+      <div className="flex-1 text-center px-2">
+        <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/40 mb-0.5">{label}</p>
+        <input
+          type="number"
+          value={value}
+          title={label}
+          aria-label={label}
+          onChange={(e) => onChange(e.target.value)}
+          className="bg-transparent border-0 p-0 w-full text-center font-black text-lg focus:ring-0 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+      </div>
+      <button
+        type="button"
+        title="Increase stock"
+        aria-label="Increase stock"
+        onClick={handleIncrement}
+        className="w-10 h-10 rounded-xl flex items-center justify-center bg-muted/50 text-muted-foreground hover:bg-primary/10 hover:text-primary active:scale-90 transition-all"
+      >
+        <Plus className="w-4 h-4" />
+      </button>
+    </div>
+  );
+};
 
 const AddProduct = () => {
   const navigate = useNavigate();
@@ -86,7 +138,7 @@ const AddProduct = () => {
       }
 
       // 2. Insert product
-      const { error } = await (supabase
+      const { error } = await supabase
         .from('products')
         .insert({
           id: productId,
@@ -103,7 +155,7 @@ const AddProduct = () => {
           min_stock_level: data.track_inventory ? Number(data.min_stock_level) : 5,
           is_in_stock: true,
           status: data.status,
-        } as any) as any);
+        });
 
       if (error) throw error;
 
@@ -178,7 +230,7 @@ const AddProduct = () => {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <h1 className="text-3xl font-serif font-bold text-foreground mb-2">
+        <h1 className="text-3xl font-display font-bold text-foreground mb-2">
           Add New Product
         </h1>
         <p className="text-muted-foreground">
@@ -317,31 +369,41 @@ const AddProduct = () => {
               </div>
 
               {watchAll.track_inventory && (
-                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-primary/10 animate-in fade-in slide-in-from-top-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-primary/10 animate-in fade-in slide-in-from-top-2">
                   <div className="space-y-2">
-                    <Label htmlFor="stock_quantity">Initial Stock</Label>
-                    <Input
-                      id="stock_quantity"
-                      type="number"
-                      placeholder="0"
-                      min="0"
-                      className="bg-white"
-                      {...register('stock_quantity')}
+                    <Controller
+                      name="stock_quantity"
+                      control={control}
+                      render={({ field }) => (
+                        <StockStepper
+                          label="Initial Stock"
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      )}
                     />
+                    <p className="text-[9px] text-muted-foreground/60 font-medium px-2">
+                      Quantity currently in your warehouse
+                    </p>
                     {errors.stock_quantity && (
                       <p className="text-xs text-destructive font-medium">{errors.stock_quantity.message}</p>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="min_stock_level">Low Stock Limit</Label>
-                    <Input
-                      id="min_stock_level"
-                      type="number"
-                      placeholder="5"
-                      min="0"
-                      className="bg-white"
-                      {...register('min_stock_level')}
+                    <Controller
+                      name="min_stock_level"
+                      control={control}
+                      render={({ field }) => (
+                        <StockStepper
+                          label="Low Limit"
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      )}
                     />
+                    <p className="text-[9px] text-muted-foreground/60 font-medium px-2">
+                      Alert sent when stock falls below this
+                    </p>
                     {errors.min_stock_level && (
                       <p className="text-xs text-destructive font-medium">{errors.min_stock_level.message}</p>
                     )}
@@ -435,7 +497,7 @@ const AddProduct = () => {
         {/* Preview */}
         <div className="lg:sticky lg:top-8 h-fit">
           <div className="mb-4">
-            <h2 className="text-lg font-serif font-semibold text-foreground">
+            <h2 className="text-lg font-display font-semibold text-foreground">
               Live Preview
             </h2>
             <p className="text-sm text-muted-foreground">
@@ -455,7 +517,7 @@ const AddProduct = () => {
 
       {/* Image Crop Modal */}
       <Dialog open={isCropModalOpen} onOpenChange={setIsCropModalOpen}>
-        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-[2rem]">
+        <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden rounded-[2rem] max-h-[90vh] flex flex-col">
           <div className="p-6 pb-0">
             <DialogHeader>
               <DialogTitle className="text-2xl font-display font-bold">Crop Product Image</DialogTitle>
@@ -465,7 +527,7 @@ const AddProduct = () => {
             </DialogHeader>
           </div>
 
-          <div className="p-6">
+          <div className="p-8 overflow-y-auto">
             {tempImageSrc && (
               <ImageCropper
                 imageSrc={tempImageSrc}

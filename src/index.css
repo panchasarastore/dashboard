@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital,wght@0,400;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -102,11 +102,14 @@
 @layer base {
   * {
     @apply border-border;
+    transition-property: background-color, border-color, text-color, fill, stroke;
+    transition-duration: 300ms;
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    transition: background-color 300ms ease, color 300ms ease;
   }
 
   h1,
@@ -115,12 +118,50 @@
   h4,
   .font-display {
     font-family: 'Lexend', sans-serif;
-    @apply font-semibold tracking-wide;
+    @apply font-bold tracking-tight;
   }
 
   .font-serif {
     font-family: 'Instrument Serif', serif;
     @apply tracking-normal;
+  }
+
+  /* Premium Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 20px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.5);
+    background-clip: content-box;
+  }
+
+  .dark {
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+
+  /* Hide Number Input Spinners */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
 }
 
@@ -151,6 +192,15 @@
 }
 
 @layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-orange-400;
   }

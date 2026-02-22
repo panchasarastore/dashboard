@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   PlusCircle,
@@ -34,6 +34,7 @@ interface DashboardSidebarProps {
 
 const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { activeStore } = useStore();
   const { signOut } = useAuth();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -57,7 +58,6 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: ShoppingBag, label: 'Manage Orders', path: '/dashboard/orders' },
-    { icon: PlusCircle, label: 'Add Product', path: '/dashboard/add-product' },
     { icon: Edit3, label: 'Manage Products', path: '/dashboard/products' },
   ];
 
@@ -72,6 +72,13 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
       toast.error('Store link not available');
     }
   };
+
+  const quickActions = [
+    { icon: PlusCircle, label: 'Add Product', onClick: () => navigate('/dashboard/add-product') },
+    { icon: Edit3, label: 'Edit Store', onClick: () => window.open(`${storeBaseUrl}/edit-store`, '_blank') },
+    { icon: Share2, label: 'Share Store', onClick: handleShareLink },
+    { icon: Eye, label: 'View Store', onClick: handleViewStore },
+  ];
 
   const handleLogout = async () => {
     try {
@@ -105,22 +112,26 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
           isCollapsed ? "justify-center px-0" : "justify-between px-6"
         )}>
           {!isCollapsed ? (
-            <Link to="/" className="flex items-center gap-3 overflow-hidden">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-xl shadow-lg shadow-primary/20 shrink-0">
-                {activeStore?.logo_url ? <img src={activeStore.logo_url} alt="Logo" className="w-6 h-6 object-contain" /> : '🏪'}
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="font-serif font-black text-foreground text-sm uppercase tracking-tighter leading-none truncate">
-                  {activeStore?.store_name || 'Store'}
-                </span>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-bold opacity-50">
-                  Panel
-                </span>
+            <Link to="/" className="flex items-center gap-3 overflow-hidden group/logo">
+              <div className="w-16 h-16 rounded-[2rem] bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center shadow-inner border border-primary/10 backdrop-blur-xl transition-all duration-500 group-hover/logo:scale-105 group-hover/logo:border-primary/20 shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-white dark:bg-muted shadow-2xl flex items-center justify-center overflow-hidden border border-white dark:border-white/10 p-1">
+                  {activeStore?.logo_url ? (
+                    <img src={activeStore.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                  ) : (
+                    <span className="text-2xl">🏪</span>
+                  )}
+                </div>
               </div>
             </Link>
           ) : (
-            <Link to="/" className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-xl shadow-lg shadow-primary/20 shrink-0">
-              {activeStore?.logo_url ? <img src={activeStore.logo_url} alt="Logo" className="w-6 h-6 object-contain" /> : '🏪'}
+            <Link to="/" className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent flex items-center justify-center shadow-inner border border-primary/10 backdrop-blur-xl shrink-0 transition-all duration-300">
+              <div className="w-8 h-8 rounded-xl bg-white dark:bg-muted shadow-lg flex items-center justify-center overflow-hidden border border-white dark:border-white/10 p-0.5">
+                {activeStore?.logo_url ? (
+                  <img src={activeStore.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-xl">🏪</span>
+                )}
+              </div>
             </Link>
           )}
 
@@ -185,6 +196,38 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
                 </Tooltip>
               );
             })}
+
+            <div className="my-4 border-t border-sidebar-border/50" />
+
+            {!isCollapsed && (
+              <div className="px-3 mb-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-50">
+                  Quick Actions
+                </span>
+              </div>
+            )}
+
+            {quickActions.map((action) => (
+              <Tooltip key={action.label}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={action.onClick}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative text-muted-foreground hover:bg-primary/5 hover:text-foreground",
+                      isCollapsed && "justify-center px-0"
+                    )}
+                  >
+                    <action.icon className="w-5 h-5 shrink-0 transition-colors group-hover:text-primary" />
+                    {!isCollapsed && <span className="text-sm tracking-tight">{action.label}</span>}
+                  </button>
+                </TooltipTrigger>
+                {isCollapsed && (
+                  <TooltipContent side="right" className="font-bold text-xs uppercase tracking-widest bg-foreground text-background border-none">
+                    {action.label}
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            ))}
           </TooltipProvider>
         </nav>
 

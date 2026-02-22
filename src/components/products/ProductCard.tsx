@@ -41,7 +41,7 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleVisibility, onToggleSt
         {/* Status Overlays */}
         {isHidden && (
           <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
-            <Badge className="bg-white text-black font-black uppercase tracking-widest px-4 py-2 rounded-xl scale-110 shadow-2xl">
+            <Badge className="bg-card text-foreground font-black uppercase tracking-widest px-4 py-2 rounded-xl scale-110 shadow-2xl">
               Hidden
             </Badge>
           </div>
@@ -65,7 +65,7 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleVisibility, onToggleSt
         <div className="absolute top-3 right-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="secondary" size="icon" className="h-10 w-10 rounded-xl bg-white/90 backdrop-blur shadow-xl hover:bg-white text-black active:scale-90 transition-all border-none">
+              <Button variant="secondary" size="icon" className="h-10 w-10 rounded-xl bg-card/90 backdrop-blur shadow-xl hover:bg-card text-foreground active:scale-90 transition-all border-none">
                 <MoreVertical className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
@@ -142,7 +142,7 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleVisibility, onToggleSt
               <Button
                 variant="outline"
                 size="icon"
-                className="h-9 w-9 rounded-xl border-2 hover:bg-white active:scale-90 transition-all shadow-sm"
+                className="h-9 w-9 rounded-xl border-2 hover:bg-accent active:scale-90 transition-all shadow-sm"
                 onClick={() => onUpdateStock(product.id, Math.max(0, Number(stock) - 1))}
               >
                 <Minus className="h-4 w-4" />
@@ -150,7 +150,7 @@ const ProductCard = ({ product, onEdit, onDelete, onToggleVisibility, onToggleSt
               <Button
                 variant="outline"
                 size="icon"
-                className="h-9 w-9 rounded-xl border-2 hover:bg-white active:scale-90 transition-all shadow-sm"
+                className="h-9 w-9 rounded-xl border-2 hover:bg-accent active:scale-90 transition-all shadow-sm"
                 onClick={() => onUpdateStock(product.id, Number(stock) + 1)}
               >
                 <Plus className="h-4 w-4" />

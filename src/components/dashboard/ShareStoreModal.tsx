@@ -31,7 +31,7 @@ const ShareStoreModal = ({ isOpen, onClose, storeUrl }: ShareStoreModalProps) =>
             <DialogContent className="sm:max-w-md md:max-w-lg overflow-hidden border-none p-0">
                 <div className="bg-gradient-to-br from-primary/10 via-background to-background p-6 md:p-8">
                     <DialogHeader className="mb-6">
-                        <DialogTitle className="text-2xl font-serif font-bold">Share Your Store</DialogTitle>
+                        <DialogTitle className="text-2xl font-display font-bold">Share Your Store</DialogTitle>
                         <DialogDescription className="text-base">
                             Get your products in front of more customers with these sharing options.
                         </DialogDescription>
