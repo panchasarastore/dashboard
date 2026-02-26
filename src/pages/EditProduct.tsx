@@ -413,14 +413,14 @@ const EditProduct = () => {
       </div>
 
       <Dialog open={isCropModalOpen} onOpenChange={setIsCropModalOpen}>
-        <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden rounded-[2rem] max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden rounded-[2.5rem] max-h-[90vh] flex flex-col border-none shadow-2xl">
           <div className="p-6 pb-0">
             <DialogHeader>
               <DialogTitle className="text-2xl font-display font-bold">Crop Product Image</DialogTitle>
               <DialogDescription>Drag and zoom to frame your product perfectly.</DialogDescription>
             </DialogHeader>
           </div>
-          <div className="p-8 overflow-y-auto">
+          <div className="p-8 pt-2 overflow-y-auto">
             {tempImageSrc && (
               <ImageCropper
                 imageSrc={tempImageSrc}

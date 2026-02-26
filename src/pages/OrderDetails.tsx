@@ -21,7 +21,8 @@ import {
   History,
   FileText,
   ChevronDown,
-  AlertCircle
+  AlertCircle,
+  Copy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +42,11 @@ const OrderDetails = () => {
   const { data: order, isLoading, error } = useOrder(orderId);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+
+  const handleCopy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied to clipboard!`);
+  };
 
   if (isLoading && !order) {
     return (
@@ -310,11 +316,8 @@ const OrderDetails = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-
-
-        {/* Main Panel: Registry & Actions (Lg: 9 cols) */}
-        <div className="lg:col-span-9 space-y-8 animate-slide-up [animation-delay:100ms]">
+        {/* Main Panel: Registry & Actions (Lg: 8 cols) */}
+        <div className="lg:col-span-8 space-y-8 animate-slide-up [animation-delay:100ms]">
 
           {/* Main Items Card (Order Registry) */}
           <div className="bg-card border rounded-[2.5rem] p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.02)] overflow-hidden relative">
@@ -454,7 +457,7 @@ const OrderDetails = () => {
           </div>
 
           {/* Action Center (Sticky on Mobile) */}
-          <div className="bg-primary/5 border-2 border-primary/20 rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-primary/5 relative overflow-hidden group sticky bottom-4 md:static z-40 backdrop-blur-md">
+          <div className="bg-primary/5 border-2 border-primary/20 rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-primary/5 relative group sticky bottom-4 md:static z-40 backdrop-blur-md">
             <div className="absolute top-0 right-0 p-8 opacity-[0.05] pointer-events-none group-hover:scale-110 transition-transform duration-1000">
               <MessageSquare className="w-32 h-32" />
             </div>
@@ -468,7 +471,7 @@ const OrderDetails = () => {
                     <AlertCircle className="w-4 h-4 text-muted-foreground/40 cursor-help hover:text-primary transition-colors" />
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-popover border rounded-xl shadow-2xl opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all z-50">
                       <p className="text-[10px] leading-relaxed font-bold text-foreground italic">
-                        Use AI to generate smart replies based on the current order context.
+                        Access pre-written message templates tailored to this order's status and customer details to send on Whatsapp.
                       </p>
                     </div>
                   </div>
@@ -482,7 +485,7 @@ const OrderDetails = () => {
                   className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl h-12 md:h-14 flex-1 md:flex-none px-6 md:px-10 font-black text-[10px] md:text-xs uppercase tracking-widest shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-3"
                 >
                   <MessageSquare className="w-4 h-4 md:w-5 h-5 fill-current" />
-                  {showTemplates ? 'Hide AI' : 'AI Smart Reply'}
+                  {showTemplates ? 'Close Templates' : 'Quick Replies'}
                 </Button>
               </div>
             </div>
@@ -505,8 +508,8 @@ const OrderDetails = () => {
           </div>
         </div>
 
-        {/* Right Panel: Customer Insight (Sidebar) */}
-        <div className="lg:col-span-3 space-y-8 animate-slide-up print:hidden [animation-delay:200ms]">
+        {/* Right Panel: Customer Insight (Sidebar) (Lg: 4 cols) */}
+        <div className="lg:col-span-4 space-y-8 animate-slide-up print:hidden [animation-delay:200ms]">
           <div className="bg-card border rounded-[2.5rem] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] relative overflow-hidden group">
             <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000"></div>
 
@@ -528,18 +531,39 @@ const OrderDetails = () => {
               </div>
 
               <div className="space-y-3">
-                <a href={`tel:${order.customer_phone}`} className="flex items-center gap-4 p-4 rounded-2xl border bg-muted/20 hover:bg-primary/5 hover:border-primary/20 transition-all text-sm font-bold group">
-                  <div className="w-8 h-8 rounded-lg bg-card border flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Phone className="w-4 h-4 text-primary" />
-                  </div>
-                  {order.customer_phone}
-                </a>
-                <a href={`mailto:${order.customer_email}`} className="flex items-center gap-4 p-4 rounded-2xl border bg-muted/20 hover:bg-primary/5 hover:border-primary/20 transition-all text-sm font-bold group overflow-hidden">
-                  <div className="w-8 h-8 rounded-lg bg-card border flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Mail className="w-4 h-4 text-primary" />
-                  </div>
-                  <span className="truncate flex-1">{order.customer_email}</span>
-                </a>
+                <div className="flex items-center gap-2">
+                  <a href={`tel:${order.customer_phone}`} className="flex-1 flex items-center gap-4 p-4 rounded-2xl border bg-muted/20 hover:bg-primary/5 hover:border-primary/20 transition-all text-sm font-bold group">
+                    <div className="w-8 h-8 rounded-lg bg-card border flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Phone className="w-4 h-4 text-primary" />
+                    </div>
+                    {order.customer_phone}
+                  </a>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleCopy(order.customer_phone, 'Phone number')}
+                    className="h-14 w-14 rounded-2xl border-2 border-dashed border-border/40 hover:border-primary/40 hover:bg-primary/5 text-muted-foreground/40 hover:text-primary transition-all active:scale-95"
+                  >
+                    <Copy className="w-5 h-5" />
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <a href={`mailto:${order.customer_email}`} className="flex-1 flex items-center gap-4 p-4 rounded-2xl border bg-muted/20 hover:bg-primary/5 hover:border-primary/20 transition-all text-sm font-bold group overflow-hidden">
+                    <div className="w-8 h-8 rounded-lg bg-card border flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Mail className="w-4 h-4 text-primary" />
+                    </div>
+                    <span className="truncate flex-1">{order.customer_email}</span>
+                  </a>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleCopy(order.customer_email, 'Email address')}
+                    className="h-14 w-14 rounded-2xl border-2 border-dashed border-border/40 hover:border-primary/40 hover:bg-primary/5 text-muted-foreground/40 hover:text-primary transition-all active:scale-95"
+                  >
+                    <Copy className="w-5 h-5" />
+                  </Button>
+                </div>
               </div>
 
               <div className="pt-4">
@@ -549,6 +573,7 @@ const OrderDetails = () => {
                     email={order.customer_email}
                     phone={order.customer_phone}
                     currentOrderId={order.id}
+                    storeId={order.store_id}
                   />
                 </div>
               </div>
@@ -560,57 +585,110 @@ const OrderDetails = () => {
   );
 };
 
-const CustomerHistory = ({ email, phone, currentOrderId }: { email: string; phone: string; currentOrderId: string }) => {
+const CustomerHistory = ({ email, phone, currentOrderId, storeId }: { email: string; phone: string; currentOrderId: string; storeId: string }) => {
+  const navigate = useNavigate();
   const { data: history, isLoading } = useQuery({
-    queryKey: ['customer-history', email, phone],
+    queryKey: ['customer-history', email, phone, storeId],
     queryFn: async () => {
-      // Fetch orders matching email OR phone, excluding current order
-      const { data, error } = await supabase
+      let query = supabase
         .from('orders')
         .select('id, order_number, total_amount, created_at, order_status')
-        .or(`customer_email.eq.${email},customer_phone.eq.${phone}`)
-        .neq('id', currentOrderId)
-        .order('created_at', { ascending: false })
-        .limit(5);
+        .eq('store_id', storeId)
+        .neq('id', currentOrderId);
+
+      const filters = [];
+      if (email) filters.push(`customer_email.eq.${email}`);
+      if (phone) filters.push(`customer_phone.eq.${phone}`);
+
+      if (filters.length > 0) {
+        query = query.or(filters.join(','));
+      } else {
+        return []; // No identifiers provided
+      }
+
+      const { data, error } = await query
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data;
     },
-    enabled: !!email || !!phone
+    enabled: !!(email || phone) && !!storeId
   });
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 py-2">
-        <Loader2 className="w-3 h-3 animate-spin text-primary/40" />
-        <p className="text-[10px] font-bold text-muted-foreground italic">Analyzing history...</p>
+      <div className="flex items-center gap-2 py-4">
+        <Loader2 className="w-4 h-4 animate-spin text-primary" />
+        <p className="text-xs font-bold text-muted-foreground animate-pulse">Analyzing history...</p>
       </div>
     );
   }
 
   if (!history || history.length === 0) {
     return (
-      <p className="text-xs font-bold text-muted-foreground leading-relaxed italic">
-        No previous purchase history found. New customer.
-      </p>
+      <div className="py-4 text-center">
+        <div className="w-10 h-10 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-3">
+          <User className="w-5 h-5 text-muted-foreground/30" />
+        </div>
+        <p className="text-[11px] font-bold text-muted-foreground/60 leading-relaxed">
+          First purchase! <br />
+          <span className="text-[9px] uppercase tracking-widest opacity-50">No previous history found</span>
+        </p>
+      </div>
     );
   }
 
+  const lifetimeSpend = history.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+  const totalOrderCount = history.length;
+  const recentOrders = history.slice(0, 5);
+
   return (
-    <div className="space-y-3">
-      <p className="text-[10px] font-bold text-primary/60 uppercase tracking-wider mb-1">Previous Orders ({history.length})</p>
-      {history.map((prevOrder) => (
-        <div key={prevOrder.id} className="flex flex-col gap-1 border-b border-border/10 last:border-0 pb-2 last:pb-0">
-          <div className="flex justify-between items-center text-[11px] font-black">
-            <span className="text-foreground">#{prevOrder.order_number.slice(-8)}</span>
-            <span className="text-foreground">₹{prevOrder.total_amount.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between items-center text-[9px] font-bold text-muted-foreground">
-            <span>{format(new Date(prevOrder.created_at), 'MMM dd, yyyy')}</span>
-            <span className="uppercase tracking-widest opacity-60">{prevOrder.order_status}</span>
-          </div>
+    <div className="space-y-4">
+      {/* Loyalty Header */}
+      <div className="flex items-center justify-between mb-4 bg-primary/[0.03] p-3 rounded-xl border border-primary/5">
+        <div>
+          <p className="text-[9px] font-black text-primary/60 uppercase tracking-widest mb-0.5">Lifetime Spend</p>
+          <p className="text-lg font-black text-foreground tracking-tight">₹{lifetimeSpend.toLocaleString()}</p>
         </div>
-      ))}
+        <div className="text-right">
+          <p className="text-[9px] font-black text-primary/60 uppercase tracking-widest mb-0.5">Total Orders</p>
+          <Badge className="bg-primary/10 text-primary border-none text-[9px] font-black h-5">{totalOrderCount} Orders</Badge>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {recentOrders.map((prevOrder) => {
+          const status = prevOrder.order_status?.toLowerCase() || 'pending';
+          const isCompleted = status === 'completed' || status === 'delivered' || status === 'ready';
+
+          return (
+            <button
+              key={prevOrder.id}
+              onClick={() => navigate(`/dashboard/orders/${prevOrder.id}`)}
+              className="w-full text-left p-3 rounded-xl border border-transparent hover:border-primary/20 hover:bg-white transition-all group relative overflow-hidden active:scale-[0.98]"
+            >
+              <div className="flex justify-between items-start mb-1">
+                <span className="text-[11px] font-black text-foreground tracking-tight group-hover:text-primary transition-colors">
+                  #{prevOrder.order_number.slice(-8).toUpperCase()}
+                </span>
+                <span className="text-xs font-black text-foreground">₹{prevOrder.total_amount.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  {format(new Date(prevOrder.created_at), 'MMM dd, yyyy')}
+                </span>
+                <div className={cn(
+                  "flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest",
+                  isCompleted ? "text-emerald-600" : "text-amber-600"
+                )}>
+                  <div className={cn("w-1 h-1 rounded-full", isCompleted ? "bg-emerald-500" : "bg-amber-500")} />
+                  {status}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };

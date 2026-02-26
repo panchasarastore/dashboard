@@ -63,40 +63,44 @@ const ImageCropper = ({ imageSrc, onCropComplete, onCancel, aspect = 4 / 3 }: Im
     };
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="relative w-full h-[360px] bg-[#1a1a1a] rounded-2xl overflow-hidden border-2 border-white/5 shadow-2xl group/cropper">
-                <Cropper
-                    image={imageSrc}
-                    crop={crop}
-                    zoom={zoom}
-                    rotation={rotation}
-                    aspect={aspect}
-                    onCropChange={onCropChange}
-                    onZoomChange={onZoomChange}
-                    onRotationChange={onRotationChange}
-                    onCropComplete={onCropAreaComplete}
-                    classes={{
-                        cropAreaClassName: "rounded-xl ring-2 ring-white/20 shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]",
-                        containerClassName: "rounded-xl"
-                    }}
-                />
-                <div className="absolute top-4 right-4 z-10">
-                    <Badge className="bg-black/40 backdrop-blur-md text-white border-white/10 font-bold px-2 py-1 text-[9px] uppercase tracking-widest">
-                        4:3 Target
-                    </Badge>
+        <div className="flex flex-col lg:flex-row gap-8 min-h-[400px]">
+            {/* Left Side: Cropper Work Area */}
+            <div className="flex-1 min-w-0">
+                <div className="relative w-full aspect-[4/3] bg-[#0a0a0a] rounded-2xl overflow-hidden border-2 border-white/5 shadow-inner group/cropper">
+                    <Cropper
+                        image={imageSrc}
+                        crop={crop}
+                        zoom={zoom}
+                        rotation={rotation}
+                        aspect={aspect}
+                        onCropChange={onCropChange}
+                        onZoomChange={onZoomChange}
+                        onRotationChange={onRotationChange}
+                        onCropComplete={onCropAreaComplete}
+                        classes={{
+                            cropAreaClassName: "rounded-lg ring-2 ring-white/30 shadow-[0_0_0_9999px_rgba(0,0,0,0.8)]",
+                            containerClassName: "rounded-2xl"
+                        }}
+                    />
+                    <div className="absolute top-4 right-4 z-10">
+                        <Badge className="bg-black/60 backdrop-blur-md text-white border-white/10 font-bold px-2 py-1 text-[9px] uppercase tracking-widest">
+                            {aspect === 4 / 3 ? '4:3 Target' : 'Image Crop'}
+                        </Badge>
+                    </div>
                 </div>
             </div>
 
-            <div className="space-y-6 px-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            {/* Right Side: Tool Sidebar */}
+            <div className="w-full lg:w-[280px] flex flex-col justify-between py-2 overflow-y-auto">
+                <div className="space-y-8">
                     {/* Premium Zoom Section */}
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Zoom Level</span>
-                            <span className="text-xs font-bold text-primary">{zoom.toFixed(1)}x</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Precision Zoom</span>
+                            <span className="text-xs font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">{zoom.toFixed(1)}x</span>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <Minus className="w-4 h-4 text-muted-foreground/30" />
+                        <div className="flex items-center gap-3">
+                            <Minus className="w-3.5 h-3.5 text-muted-foreground/30" />
                             <Slider
                                 value={[zoom]}
                                 min={1}
@@ -105,60 +109,51 @@ const ImageCropper = ({ imageSrc, onCropComplete, onCancel, aspect = 4 / 3 }: Im
                                 onValueChange={(value) => setZoom(value[0])}
                                 className="flex-1"
                             />
-                            <Plus className="w-4 h-4 text-muted-foreground/30" />
+                            <Plus className="w-3.5 h-3.5 text-muted-foreground/30" />
                         </div>
                     </div>
 
                     {/* Button-based Rotation Section */}
-                    <div className="space-y-3">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 block">Rotation</span>
-                        <div className="flex gap-2">
+                    <div className="space-y-4">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 block">Orientation</span>
+                        <div className="grid grid-cols-2 gap-2">
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="flex-1 h-10 rounded-xl border-2 hover:bg-muted font-bold transition-all"
+                                className="h-10 rounded-xl border-2 hover:bg-muted font-bold transition-all group/btn"
                                 onClick={() => handleRotate('left')}
                             >
-                                <RotateCcw className="w-4 h-4 mr-2" />
-                                <span className="text-xs uppercase">Left</span>
+                                <RotateCcw className="w-4 h-4 mr-2 group-hover/btn:-rotate-45 transition-transform" />
+                                <span className="text-[10px] uppercase">Rotate L</span>
                             </Button>
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="flex-1 h-10 rounded-xl border-2 hover:bg-muted font-bold transition-all"
+                                className="h-10 rounded-xl border-2 hover:bg-muted font-bold transition-all group/btn"
                                 onClick={() => handleRotate('right')}
                             >
-                                <RotateCw className="w-4 h-4 mr-2" />
-                                <span className="text-xs uppercase">Right</span>
+                                <RotateCw className="w-4 h-4 mr-2 group-hover/btn:rotate-45 transition-transform" />
+                                <span className="text-[10px] uppercase">Rotate R</span>
                             </Button>
                         </div>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={handleReset}
+                            className="w-full h-9 rounded-xl font-bold text-muted-foreground hover:bg-muted/50 text-[10px] uppercase tracking-wider"
+                            disabled={isCropping}
+                        >
+                            <RefreshCw className="w-3 h-3 mr-2" />
+                            Reset Settings
+                        </Button>
                     </div>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-muted/20">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={onCancel}
-                        className="flex-1 h-12 rounded-xl font-bold text-muted-foreground"
-                        disabled={isCropping}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleReset}
-                        className="flex-1 h-12 rounded-xl font-bold text-muted-foreground hover:bg-muted"
-                        disabled={isCropping}
-                    >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Reset
-                    </Button>
+                <div className="grid grid-cols-1 gap-3 pt-8 mt-8 border-t border-muted/20">
                     <Button
                         type="button"
                         onClick={handleSave}
-                        className="flex-[2] h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                        className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
                         disabled={isCropping}
                     >
                         {isCropping ? (
@@ -167,8 +162,17 @@ const ImageCropper = ({ imageSrc, onCropComplete, onCancel, aspect = 4 / 3 }: Im
                                 Processing...
                             </>
                         ) : (
-                            'Save Crop'
+                            'Save Fine-Tune'
                         )}
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={onCancel}
+                        className="w-full h-10 rounded-xl font-bold text-muted-foreground/60 hover:text-muted-foreground text-[10px] uppercase tracking-widest"
+                        disabled={isCropping}
+                    >
+                        Discard
                     </Button>
                 </div>
             </div>
