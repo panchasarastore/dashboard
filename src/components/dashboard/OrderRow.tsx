@@ -84,8 +84,8 @@ const OrderRow = ({ order, onClick }: OrderRowProps) => {
 
     setIsUpdating(true);
     try {
-      const { error } = await (supabase
-        .from('orders') as any)
+      const { error } = await supabase
+        .from('orders')
         .update({ order_status: nextStatus })
         .eq('id', order.id);
 

@@ -6,7 +6,7 @@ export type Json =
     | { [key: string]: Json | undefined }
     | Json[]
 
-export interface Database {
+export type Database = {
     public: {
         Tables: {
             orders: {
@@ -32,6 +32,7 @@ export interface Database {
                     time_slot: string | null
                     customer_notes: string | null
                     order_status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed'
+                    is_stock_decremented: boolean
                     created_at: string
                     updated_at: string
                 }
@@ -57,6 +58,7 @@ export interface Database {
                     time_slot?: string | null
                     customer_notes?: string | null
                     order_status?: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed'
+                    is_stock_decremented?: boolean
                     created_at?: string
                     updated_at?: string
                 }
@@ -82,9 +84,11 @@ export interface Database {
                     time_slot?: string | null
                     customer_notes?: string | null
                     order_status?: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed'
+                    is_stock_decremented?: boolean
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: []
             }
             order_items: {
                 Row: {
@@ -123,6 +127,7 @@ export interface Database {
                     custom_note?: string | null
                     created_at?: string
                 }
+                Relationships: []
             }
             products: {
                 Row: {
@@ -179,6 +184,7 @@ export interface Database {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: []
             }
             stores: {
                 Row: {
@@ -208,15 +214,39 @@ export interface Database {
                     is_active?: boolean
                     created_at?: string
                 }
+                Relationships: []
             }
         }
         Views: {
             [_ in never]: never
         }
         Functions: {
-            [_ in never]: never
+            decrement_stock: {
+                Args: {
+                    p_product_id: string
+                    p_quantity: number
+                }
+                Returns: undefined
+            }
+            create_order_with_items: {
+                Args: {
+                    p_order: Json
+                    p_items: Json
+                }
+                Returns: Json
+            }
+            get_order_by_number: {
+                Args: {
+                    p_order_number: string
+                    p_identifier: string
+                }
+                Returns: Json
+            }
         }
         Enums: {
+            [_ in never]: never
+        }
+        CompositeTypes: {
             [_ in never]: never
         }
     }

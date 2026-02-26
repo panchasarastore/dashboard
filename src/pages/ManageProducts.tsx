@@ -49,8 +49,8 @@ const ManageProducts = () => {
     let products = infiniteData?.pages.flatMap(page => page.data) || [];
     if (showLowStockOnly) {
       products = products.filter(p => {
-        const stock = (p as any).stock_quantity;
-        const minStock = (p as any).min_stock_level ?? 5;
+        const stock = p.stock_quantity;
+        const minStock = p.min_stock_level ?? 5;
         if (stock === null) return false;
         return p.is_in_stock && Number(stock) <= minStock;
       });
@@ -61,7 +61,7 @@ const ManageProducts = () => {
   const categories = useMemo(() => {
     const allProducts = infiniteData?.pages.flatMap(page => page.data) || [];
     if (!allProducts.length) return ['All'];
-    const unique = Array.from(new Set(allProducts.map(p => (p as any).category).filter(Boolean)));
+    const unique = Array.from(new Set(allProducts.map(p => p.category).filter(Boolean)));
     return ['All', ...unique as string[]];
   }, [infiniteData]);
 

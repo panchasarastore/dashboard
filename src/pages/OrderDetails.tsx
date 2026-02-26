@@ -28,7 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { useOrder } from '@/hooks/useOrders';
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database.types';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -545,15 +545,72 @@ const OrderDetails = () => {
               <div className="pt-4">
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 mb-2">Customer Profile</p>
                 <div className="p-4 rounded-2xl border bg-muted/5 shadow-inner">
-                  <p className="text-xs font-bold text-muted-foreground leading-relaxed italic">
-                    No previous purchase history found. New customer.
-                  </p>
+                  <CustomerHistory
+                    email={order.customer_email}
+                    phone={order.customer_phone}
+                    currentOrderId={order.id}
+                  />
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+const CustomerHistory = ({ email, phone, currentOrderId }: { email: string; phone: string; currentOrderId: string }) => {
+  const { data: history, isLoading } = useQuery({
+    queryKey: ['customer-history', email, phone],
+    queryFn: async () => {
+      // Fetch orders matching email OR phone, excluding current order
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, order_number, total_amount, created_at, order_status')
+        .or(`customer_email.eq.${email},customer_phone.eq.${phone}`)
+        .neq('id', currentOrderId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!email || !!phone
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 py-2">
+        <Loader2 className="w-3 h-3 animate-spin text-primary/40" />
+        <p className="text-[10px] font-bold text-muted-foreground italic">Analyzing history...</p>
+      </div>
+    );
+  }
+
+  if (!history || history.length === 0) {
+    return (
+      <p className="text-xs font-bold text-muted-foreground leading-relaxed italic">
+        No previous purchase history found. New customer.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[10px] font-bold text-primary/60 uppercase tracking-wider mb-1">Previous Orders ({history.length})</p>
+      {history.map((prevOrder) => (
+        <div key={prevOrder.id} className="flex flex-col gap-1 border-b border-border/10 last:border-0 pb-2 last:pb-0">
+          <div className="flex justify-between items-center text-[11px] font-black">
+            <span className="text-foreground">#{prevOrder.order_number.slice(-8)}</span>
+            <span className="text-foreground">₹{prevOrder.total_amount.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between items-center text-[9px] font-bold text-muted-foreground">
+            <span>{format(new Date(prevOrder.created_at), 'MMM dd, yyyy')}</span>
+            <span className="uppercase tracking-widest opacity-60">{prevOrder.order_status}</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

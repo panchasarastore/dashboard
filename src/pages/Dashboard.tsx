@@ -210,7 +210,6 @@ const Dashboard = () => {
           subtitle="Lifetime earnings"
           icon={IndianRupee}
           variant="primary"
-          trend={{ value: 12, isPositive: true }}
         />
         <StatCard
           title="Pending Attention"

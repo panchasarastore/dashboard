@@ -77,8 +77,8 @@ const ManageOrders = () => {
                 ...orders.map(o => [
                     o.order_number,
                     `"${o.customer_name}"`,
-                    `"${(o as any).productName}"`,
-                    (o as any).totalQuantity,
+                    `"${o.productName}"`,
+                    o.totalQuantity,
                     o.total_amount,
                     o.status,
                     o.order_date,
@@ -249,7 +249,7 @@ const ManageOrders = () => {
                                 {orders.map((order) => (
                                     <OrderRow
                                         key={order.id}
-                                        order={order as any}
+                                        order={order}
                                         onClick={() => navigate(`/dashboard/orders/${order.id}`)}
                                     />
                                 ))}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useStore } from '@/contexts/StoreContext';
@@ -6,11 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { config } from '@/lib/config';
 import DashboardSidebar from './DashboardSidebar';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import NotificationManager from '../notifications/NotificationManager';
 import NotificationBell from '../notifications/NotificationBell';
 import { PlusCircle, Share2, Eye, ExternalLink } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import ShareStoreModal from '../dashboard/ShareStoreModal';
 import { ThemeToggle } from './ThemeToggle';
 import { cn } from '@/lib/utils';
@@ -27,8 +26,46 @@ const DashboardLayout = () => {
   const { activeStore } = useStore();
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const storeBaseUrl = config.store.baseUrl;
   const fullStoreUrl = `${storeBaseUrl}/${activeStore?.store_url_slug || ''}`;
+
+  useEffect(() => {
+    const path = location.pathname;
+    const storeName = activeStore?.store_name || 'Panchasara';
+    const storeLogo = activeStore?.logo_url;
+    let pageTitle = '';
+
+    if (path === '/dashboard' || path === '/dashboard/') {
+      pageTitle = storeName;
+    } else {
+      const segments = path.split('/').filter(Boolean);
+      const lastSegment = segments[segments.length - 1];
+
+      let segmentTitle = '';
+      if (path.includes('/orders/')) segmentTitle = 'Order Details';
+      else if (path.includes('/edit-product/')) segmentTitle = 'Edit Product';
+      else if (lastSegment) {
+        // Capitalize and format segment (e.g., 'add-product' -> 'Add Product')
+        segmentTitle = lastSegment
+          .split('-')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+      }
+
+      pageTitle = segmentTitle ? `${segmentTitle} | ${storeName}` : storeName;
+    }
+
+    if (pageTitle) {
+      document.title = pageTitle;
+    }
+
+    // Dynamic Favicon
+    const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+    if (favicon) {
+      favicon.href = storeLogo || '/favicon.svg';
+    }
+  }, [location, activeStore?.store_name, activeStore?.logo_url]);
 
   const handleLogout = async () => {
     try {
