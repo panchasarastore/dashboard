@@ -10,6 +10,13 @@ interface Store {
     owner_id: string;
     status: string;
     logo_url?: string;
+    allows_delivery?: boolean;
+    allows_pickup?: boolean;
+    delivery_fee?: number;
+    payment_methods?: string[];
+    upi_id?: string;
+    operating_hours?: any;
+    blackout_dates?: string[];
 }
 
 interface StoreContextType {
@@ -17,6 +24,7 @@ interface StoreContextType {
     activeStore: Store | null;
     loading: boolean;
     setActiveStore: (store: Store) => void;
+    refreshStore: () => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -55,8 +63,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         fetchStores();
     }, [user]);
 
+    const refreshStore = async () => {
+        if (!user) return;
+
+        const { data, error } = await supabase
+            .from('stores')
+            .select('*')
+            .eq('owner_id', user.id);
+
+        if (!error && data) {
+            setStores(data);
+            if (activeStore) {
+                const updatedActive = data.find(s => s.id === activeStore.id);
+                if (updatedActive) setActiveStore(updatedActive);
+            } else if (data.length > 0) {
+                setActiveStore(data[0]);
+            }
+        }
+    };
+
     return (
-        <StoreContext.Provider value={{ stores, activeStore, loading, setActiveStore }}>
+        <StoreContext.Provider value={{ stores, activeStore, loading, setActiveStore, refreshStore }}>
             {children}
         </StoreContext.Provider>
     );

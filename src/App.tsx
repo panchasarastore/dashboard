@@ -12,6 +12,7 @@ import ManageProducts from "./pages/ManageProducts";
 import EditProduct from "./pages/EditProduct";
 import ManageOrders from "./pages/ManageOrders";
 import OrderDetails from "./pages/OrderDetails";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import MyComponent from "./pages/test";
 
@@ -49,6 +50,7 @@ const App = () => (
                   <Route path="orders" element={<ManageOrders />} />
                   <Route path="edit-product/:productId" element={<EditProduct />} />
                   <Route path="orders/:orderId" element={<OrderDetails />} />
+                  <Route path="settings" element={<Settings />} />
                   <Route path="test" element={<MyComponent />} />
                 </Route>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />

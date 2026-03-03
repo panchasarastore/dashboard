@@ -37,8 +37,12 @@
     --input: 20 20% 90%;
     --ring: 29 100% 63%;
 
-    --radius: 1rem;
+    --radius: 1.25rem;
     /* Aligned with landing page '2xl' */
+
+    --glass-background: rgba(255, 255, 255, 0.4);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --glass-blur: 16px;
 
     --sidebar-background: 20 40% 97%;
     --sidebar-foreground: 222 47% 11%;
@@ -233,5 +237,21 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  /* Glassmorphism & Premium Utilities */
+  .glass-effect {
+    background: var(--glass-background);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+  }
+
+  .premium-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, #FFB470 100%);
+  }
+
+  .premium-gradient-hover {
+    background: linear-gradient(135deg, #FFB470 0%, hsl(var(--primary)) 100%);
   }
 }

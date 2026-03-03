@@ -97,7 +97,7 @@ const DashboardLayout = () => {
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Global Header */}
-        <header className="flex items-center justify-between h-20 px-4 md:px-8 border-b bg-background/50 backdrop-blur-md sticky top-0 z-30">
+        <header className="flex items-center justify-between h-20 px-4 md:px-8 border-b glass-effect sticky top-0 z-30">
           <div className="flex items-center gap-4 min-w-0">
             {/* Mobile Menu Trigger */}
             <Button

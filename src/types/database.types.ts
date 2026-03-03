@@ -189,30 +189,57 @@ export type Database = {
             stores: {
                 Row: {
                     id: string
-                    user_id: string
-                    name: string
-                    slug: string
-                    theme_data: Json | null
-                    is_active: boolean
+                    owner_id: string
+                    store_name: string
+                    store_url_slug: string
+                    logo_url: string | null
+                    theme: Json | null
+                    status: 'draft' | 'active' | 'suspended' | 'deleted'
+                    allows_delivery: boolean
+                    allows_pickup: boolean
+                    delivery_fee: number
+                    operating_hours: Json
+                    blackout_dates: string[]
+                    payment_methods: string[]
+                    upi_id: string | null
                     created_at: string
+                    updated_at: string
                 }
                 Insert: {
                     id?: string
-                    user_id: string
-                    name: string
-                    slug: string
-                    theme_data?: Json | null
-                    is_active?: boolean
+                    owner_id: string
+                    store_name: string
+                    store_url_slug: string
+                    logo_url?: string | null
+                    theme?: Json | null
+                    status?: 'draft' | 'active' | 'suspended' | 'deleted'
+                    allows_delivery?: boolean
+                    allows_pickup?: boolean
+                    delivery_fee?: number
+                    operating_hours?: Json
+                    blackout_dates?: string[]
+                    payment_methods?: string[]
+                    upi_id?: string | null
                     created_at?: string
+                    updated_at?: string
                 }
                 Update: {
                     id?: string
-                    user_id?: string
-                    name?: string
-                    slug?: string
-                    theme_data?: Json | null
-                    is_active?: boolean
+                    owner_id?: string
+                    store_name?: string
+                    store_url_slug?: string
+                    logo_url?: string | null
+                    theme?: Json | null
+                    status?: 'draft' | 'active' | 'suspended' | 'deleted'
+                    allows_delivery?: boolean
+                    allows_pickup?: boolean
+                    delivery_fee?: number
+                    operating_hours?: Json
+                    blackout_dates?: string[]
+                    payment_methods?: string[]
+                    upi_id?: string | null
                     created_at?: string
+                    updated_at?: string
                 }
                 Relationships: []
             }

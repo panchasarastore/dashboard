@@ -7,6 +7,7 @@ import {
   Share2,
   Package,
   ShoppingBag,
+  Settings,
   LogOut,
   X,
   ChevronLeft,
@@ -59,6 +60,8 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: ShoppingBag, label: 'Manage Orders', path: '/dashboard/orders' },
     { icon: Edit3, label: 'Manage Products', path: '/dashboard/products' },
+    { icon: PlusCircle, label: 'Add Product', path: '/dashboard/add-product' },
+    { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
   ];
 
   const handleShareLink = () => {
@@ -74,10 +77,9 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
   };
 
   const quickActions = [
-    { icon: PlusCircle, label: 'Add Product', onClick: () => navigate('/dashboard/add-product') },
+    { icon: Eye, label: 'View Store', onClick: handleViewStore },
     { icon: Edit3, label: 'Edit Store', onClick: () => window.open(`${storeBaseUrl}/edit-store`, '_blank') },
     { icon: Share2, label: 'Share Store', onClick: handleShareLink },
-    { icon: Eye, label: 'View Store', onClick: handleViewStore },
   ];
 
   const handleLogout = async () => {
@@ -102,7 +104,7 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
       )}
 
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 ease-in-out lg:relative lg:translate-x-0",
+        "fixed inset-y-0 left-0 z-50 glass-effect flex flex-col transition-all duration-300 ease-in-out lg:relative lg:translate-x-0",
         isCollapsed ? "w-20" : "w-64",
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}>
@@ -166,7 +168,7 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
                 ? location.pathname === '/dashboard' || location.pathname === '/dashboard/'
                 : location.pathname.startsWith(item.path);
 
-              const icon = <item.icon className={cn("w-5 h-5 shrink-0 transition-colors", isActive ? "text-primary" : "text-muted-foreground")} />;
+              const icon = <item.icon className={cn("w-5 h-5 shrink-0 transition-colors", isActive ? "text-primary-foreground" : "text-muted-foreground")} />;
 
               return (
                 <Tooltip key={item.path}>
@@ -176,7 +178,7 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
                       className={cn(
                         "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
                         isActive
-                          ? "bg-primary/10 text-primary font-bold shadow-sm border border-primary/10"
+                          ? "premium-gradient text-primary-foreground font-bold shadow-lg shadow-primary/20 border-none"
                           : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
                         isCollapsed && "justify-center px-0"
                       )}
