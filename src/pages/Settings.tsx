@@ -40,6 +40,7 @@ const Settings = () => {
         delivery_fee: 0,
         payment_methods: ["cod"],
         upi_id: "",
+        store_address: "",
         operating_hours: {
             monday: [] as string[],
             tuesday: [] as string[],
@@ -61,6 +62,7 @@ const Settings = () => {
                 delivery_fee: activeStore.delivery_fee || 0,
                 payment_methods: activeStore.payment_methods || ["cod"],
                 upi_id: activeStore.upi_id || "",
+                store_address: (activeStore as any).store_address || "",
                 operating_hours: (activeStore.operating_hours as any) || {
                     monday: [],
                     tuesday: [],
@@ -115,6 +117,7 @@ const Settings = () => {
                     delivery_fee: formData.delivery_fee,
                     payment_methods: formData.payment_methods,
                     upi_id: formData.upi_id,
+                    store_address: formData.store_address,
                     operating_hours: formData.operating_hours,
                     blackout_dates: formData.blackout_dates
                 })
@@ -307,6 +310,19 @@ const Settings = () => {
                                         onCheckedChange={(checked) => setFormData(p => ({ ...p, allows_pickup: checked }))}
                                     />
                                 </div>
+                                {formData.allows_pickup && (
+                                    <div className="space-y-2 pt-4 border-t border-border/50 animate-in slide-in-from-top-2 duration-300">
+                                        <Label htmlFor="store-address">Pickup Address</Label>
+                                        <Input
+                                            id="store-address"
+                                            placeholder="Enter your store's full address"
+                                            value={formData.store_address}
+                                            onChange={(e) => setFormData(p => ({ ...p, store_address: e.target.value }))}
+                                            className="rounded-xl h-11"
+                                        />
+                                        <p className="text-xs text-muted-foreground">This is where your customers will come to pick up their orders.</p>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
