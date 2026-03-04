@@ -29,7 +29,11 @@ export interface OrderWithDetails extends OrderRow {
     })[];
 }
 
-export const useOrders = (searchQuery: string = '', statusFilter: string = 'all') => {
+export const useOrders = (
+    searchQuery: string = '',
+    statusFilter: string = 'all',
+    dateRange?: { from: Date | undefined; to: Date | undefined }
+) => {
     const { activeStore } = useStore();
     const queryClient = useQueryClient();
     const PAGE_SIZE = 20;
@@ -108,7 +112,7 @@ export const useOrders = (searchQuery: string = '', statusFilter: string = 'all'
     }, [activeStore?.id, queryClient]);
 
     return useInfiniteQuery({
-        queryKey: ['orders', activeStore?.id, searchQuery, statusFilter],
+        queryKey: ['orders', activeStore?.id, searchQuery, statusFilter, dateRange],
         queryFn: async ({ pageParam = 0 }) => {
             if (!activeStore) return { data: [], nextCursor: null };
 
@@ -125,7 +129,15 @@ export const useOrders = (searchQuery: string = '', statusFilter: string = 'all'
             }
 
             if (statusFilter !== 'all') {
-                query = query.eq('order_status', statusFilter);
+                query = query.eq('order_status', statusFilter as any);
+            }
+
+            if (dateRange?.from) {
+                query = query.gte('created_at', dateRange.from.toISOString());
+            }
+
+            if (dateRange?.to) {
+                query = query.lte('created_at', dateRange.to.toISOString());
             }
 
             const { data, error, count } = await query;

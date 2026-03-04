@@ -10,10 +10,20 @@ import {
     CheckCircle2,
     Clock,
     Package,
+    Calendar as CalendarIcon,
+    X,
 } from 'lucide-react';
+import { format } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 import OrderRow from '@/components/dashboard/OrderRow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 import { useOrders } from '@/hooks/useOrders';
 import { useStats } from '@/hooks/useStats';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -38,6 +48,49 @@ const ManageOrders = () => {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState('all');
+
+    // Applied filters (these trigger the hook)
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+    const [startTime, setStartTime] = useState('00:00');
+    const [endTime, setEndTime] = useState('23:59');
+
+    // Temporary filters (for the popover)
+    const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(undefined);
+    const [tempStartTime, setTempStartTime] = useState('00:00');
+    const [tempEndTime, setTempEndTime] = useState('23:59');
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+    const preciseDateRange = useMemo(() => {
+        if (!dateRange?.from) return undefined;
+
+        const from = new Date(dateRange.from);
+        const [fH, fM] = startTime.split(':').map(Number);
+        from.setHours(fH, fM, 0, 0);
+
+        let to = dateRange.to ? new Date(dateRange.to) : new Date(dateRange.from);
+        const [tH, tM] = endTime.split(':').map(Number);
+        to.setHours(tH, tM, 59, 999);
+
+        return { from, to };
+    }, [dateRange, startTime, endTime]);
+
+    const handleApplyFilter = () => {
+        setDateRange(tempDateRange);
+        setStartTime(tempStartTime);
+        setEndTime(tempEndTime);
+        setIsPopoverOpen(false);
+    };
+
+    const handleResetFilter = () => {
+        setTempDateRange(undefined);
+        setTempStartTime('00:00');
+        setTempEndTime('23:59');
+        setDateRange(undefined);
+        setStartTime('00:00');
+        setEndTime('23:59');
+        setIsPopoverOpen(false);
+    };
+
     const debouncedSearch = useDebounce(searchQuery, 500);
     const [isExporting, setIsExporting] = useState(false);
 
@@ -48,7 +101,7 @@ const ManageOrders = () => {
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage
-    } = useOrders(debouncedSearch, activeTab);
+    } = useOrders(debouncedSearch, activeTab, preciseDateRange);
 
     const { data: stats } = useStats();
 
@@ -217,6 +270,93 @@ const ManageOrders = () => {
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
+
+                    <Popover open={isPopoverOpen} onOpenChange={(open) => {
+                        setIsPopoverOpen(open);
+                        if (open) {
+                            setTempDateRange(dateRange);
+                            setTempStartTime(startTime);
+                            setTempEndTime(endTime);
+                        }
+                    }}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                className={cn(
+                                    "rounded-2xl h-12 flex-1 md:flex-none font-bold gap-2 px-6 hover:bg-primary/5 hover:text-primary transition-all",
+                                    !dateRange?.from && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="w-4 h-4" />
+                                {dateRange?.from ? (
+                                    dateRange.to ? (
+                                        <>
+                                            {format(dateRange.from, "LLL dd")} - {format(dateRange.to, "LLL dd")}
+                                        </>
+                                    ) : (
+                                        format(dateRange.from, "LLL dd")
+                                    )
+                                ) : (
+                                    <span>Date Range</span>
+                                )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 rounded-2xl border shadow-2xl" align="end">
+                            <div className="p-3 border-b flex items-center justify-between bg-muted/20">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Adjust Filters</span>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleResetFilter}
+                                    className="h-6 px-2 text-[10px] font-bold hover:text-destructive"
+                                >
+                                    <X className="w-3 h-3 mr-1" />
+                                    Reset
+                                </Button>
+                            </div>
+                            <Calendar
+                                initialFocus
+                                mode="range"
+                                defaultMonth={tempDateRange?.from || new Date()}
+                                selected={tempDateRange}
+                                onSelect={setTempDateRange}
+                                numberOfMonths={1}
+                            />
+                            <div className="p-4 border-t bg-muted/5 space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Start Time</label>
+                                        <Input
+                                            type="time"
+                                            value={tempStartTime}
+                                            onChange={(e) => setTempStartTime(e.target.value)}
+                                            className="h-9 rounded-xl text-xs font-bold border-muted-foreground/10 bg-background"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">End Time</label>
+                                        <Input
+                                            type="time"
+                                            value={tempEndTime}
+                                            onChange={(e) => setTempEndTime(e.target.value)}
+                                            className="h-9 rounded-xl text-xs font-bold border-muted-foreground/10 bg-background"
+                                        />
+                                    </div>
+                                </div>
+
+                                <Button
+                                    onClick={handleApplyFilter}
+                                    className="w-full rounded-xl font-bold h-10 shadow-lg shadow-primary/20"
+                                >
+                                    Apply Filter
+                                </Button>
+
+                                <p className="text-[9px] text-center text-muted-foreground italic font-medium">
+                                    {tempDateRange?.from ? `Applying filter for chosen range` : `Select dates to enable filtering`}
+                                </p>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
 
                     <Button
                         variant="outline"
