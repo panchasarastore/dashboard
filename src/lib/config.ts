@@ -4,6 +4,8 @@
  * and ensure proper fallback behavior.
  */
 
+import { getStoreBaseUrl } from './urlUtils';
+
 const getEnvVar = (key: string, fallback?: string): string => {
     const value = import.meta.env[key];
     if (!value && fallback === undefined) {
@@ -18,7 +20,7 @@ export const config = {
         anonKey: getEnvVar('VITE_SUPABASE_ANON_KEY'),
     },
     store: {
-        baseUrl: getEnvVar('VITE_STORE_BASE_URL', 'http://localhost:4321'),
+        baseUrl: getStoreBaseUrl(),
     },
     app: {
         env: import.meta.env.MODE,

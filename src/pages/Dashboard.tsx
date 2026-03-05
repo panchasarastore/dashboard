@@ -12,6 +12,8 @@ import { useStore } from '@/contexts/StoreContext';
 import { cn } from '@/lib/utils';
 import { Product } from '@/hooks/useProducts';
 import { useAuth } from '@/contexts/AuthContext';
+import { config } from '@/lib/config';
+
 
 interface Order {
   id: string;
@@ -69,7 +71,7 @@ const Dashboard = () => {
     }) as Product[];
   }, [infiniteProducts]);
 
-  const storeBaseUrl = import.meta.env.VITE_STORE_BASE_URL || 'http://localhost:4321';
+  const storeBaseUrl = config.store.baseUrl;
 
   // Aggregate revenue data for the chart (last 7 days of activity)
   const { chartData, revenueTrend } = useMemo(() => {
