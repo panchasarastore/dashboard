@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   PlusCircle,
@@ -6,14 +6,27 @@ import {
   Eye,
   Share2,
   Package,
-  ShoppingBag
+  ShoppingBag,
+  Settings,
+  LogOut,
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
-import { storeInfo } from '@/lib/mockData';
 import { useStore } from '@/contexts/StoreContext';
-import StoreSwitcher from './StoreSwitcher';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import ShareStoreModal from '../dashboard/ShareStoreModal';
+import { config } from '@/lib/config';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 interface DashboardSidebarProps {
   isOpen?: boolean;
@@ -22,22 +35,62 @@ interface DashboardSidebarProps {
 
 const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { activeStore } = useStore();
+  const { signOut } = useAuth();
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Sync collapsed state with local storage
+  useEffect(() => {
+    const saved = localStorage.getItem('sidebar-collapsed');
+    if (saved !== null) setIsCollapsed(saved === 'true');
+  }, []);
+
+  const toggleSidebar = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem('sidebar-collapsed', String(newState));
+  };
+
+  const storeBaseUrl = config.store.baseUrl;
+  const fullStoreUrl = `${storeBaseUrl}/${activeStore?.store_url_slug || ''}`;
 
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: PlusCircle, label: 'Add Product', path: '/add-product' },
-    { icon: Edit3, label: 'Manage Products', path: '/products' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+    { icon: ShoppingBag, label: 'Manage Orders', path: '/dashboard/orders' },
+    { icon: Edit3, label: 'Manage Products', path: '/dashboard/products' },
+    { icon: PlusCircle, label: 'Add Product', path: '/dashboard/add-product' },
+    { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
   ];
 
   const handleShareLink = () => {
-    const storeUrl = `https://store.example.com/${storeInfo.url}`;
-    navigator.clipboard.writeText(storeUrl);
-    toast.success('Store link copied to clipboard!');
+    setIsShareModalOpen(true);
   };
 
   const handleViewStore = () => {
-    toast.info('Store preview would open in a new tab');
+    if (activeStore?.store_url_slug) {
+      window.open(fullStoreUrl, '_blank');
+    } else {
+      toast.error('Store link not available');
+    }
+  };
+
+  const quickActions = [
+    { icon: Eye, label: 'View Store', onClick: handleViewStore },
+    { icon: Edit3, label: 'Edit Store', onClick: () => window.open(`${storeBaseUrl}/edit-store`, '_blank') },
+    { icon: Share2, label: 'Share Store', onClick: handleShareLink },
+  ];
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success('Logged out successfully');
+      // Redirect to the store login page as requested
+      window.location.href = `${storeBaseUrl}/login`;
+    } catch (error: any) {
+      toast.error(error.message || 'Logout failed');
+    }
   };
 
   return (
@@ -50,95 +103,143 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
         />
       )}
 
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
-        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        {/* Logo & Close Button */}
-        <div className="p-6 border-b border-sidebar-border flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-xl shadow-lg shadow-primary/20">
-              {activeStore?.logo_url ? <img src={activeStore.logo_url} className="w-6 h-6 object-contain" /> : '🏪'}
-            </div>
-            <div>
-              <h1 className="font-serif font-semibold text-foreground text-lg leading-tight truncate w-32">
-                {activeStore?.store_name || 'Loading...'}
-              </h1>
-              <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium opacity-70">
-                Dashboard
-              </p>
-            </div>
-          </Link>
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-50 glass-effect flex flex-col transition-all duration-300 ease-in-out lg:relative lg:translate-x-0",
+        isCollapsed ? "w-20" : "w-64",
+        isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      )}>
+        {/* Logo & Toggle Button */}
+        <div className={cn(
+          "h-20 border-b border-sidebar-border flex items-center transition-all duration-300",
+          isCollapsed ? "justify-center px-0" : "justify-between px-6"
+        )}>
+          {!isCollapsed ? (
+            <Link to="/" className="flex items-center gap-3 overflow-hidden group/logo">
+              <div className="w-16 h-16 rounded-[2rem] bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center shadow-inner border border-primary/10 backdrop-blur-xl transition-all duration-500 group-hover/logo:scale-105 group-hover/logo:border-primary/20 shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-white dark:bg-muted shadow-2xl flex items-center justify-center overflow-hidden border border-white dark:border-white/10 p-1">
+                  {activeStore?.logo_url ? (
+                    <img src={activeStore.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                  ) : (
+                    <span className="text-2xl">🏪</span>
+                  )}
+                </div>
+              </div>
+            </Link>
+          ) : (
+            <Link to="/" className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent flex items-center justify-center shadow-inner border border-primary/10 backdrop-blur-xl shrink-0 transition-all duration-300">
+              <div className="w-8 h-8 rounded-xl bg-white dark:bg-muted shadow-lg flex items-center justify-center overflow-hidden border border-white dark:border-white/10 p-0.5">
+                {activeStore?.logo_url ? (
+                  <img src={activeStore.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-xl">🏪</span>
+                )}
+              </div>
+            </Link>
+          )}
 
-          {onClose && (
+          <div className="flex items-center gap-1">
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="lg:hidden h-8 w-8 text-muted-foreground"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            )}
+
             <Button
               variant="ghost"
               size="icon"
-              onClick={onClose}
-              className="lg:hidden h-8 w-8 text-muted-foreground"
+              onClick={toggleSidebar}
+              className="hidden lg:flex h-8 w-8 text-muted-foreground hover:bg-primary/5 rounded-lg transition-transform active:scale-95"
             >
-              <X className="h-5 w-5" />
+              {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </Button>
-          )}
+          </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4">
-          <div className="space-y-1">
+        <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto custom-scrollbar">
+          <TooltipProvider delayDuration={0}>
             {menuItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const isActive = item.path === '/dashboard'
+                ? location.pathname === '/dashboard' || location.pathname === '/dashboard/'
+                : location.pathname.startsWith(item.path);
+
+              const icon = <item.icon className={cn("w-5 h-5 shrink-0 transition-colors", isActive ? "text-primary-foreground" : "text-muted-foreground")} />;
+
               return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`sidebar-item ${isActive ? 'sidebar-item-active' : ''}`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span className="font-medium">{item.label}</span>
-                </Link>
+                <Tooltip key={item.path}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={item.path}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
+                        isActive
+                          ? "premium-gradient text-primary-foreground font-bold shadow-lg shadow-primary/20 border-none"
+                          : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
+                        isCollapsed && "justify-center px-0"
+                      )}
+                    >
+                      {icon}
+                      {!isCollapsed && <span className="text-sm tracking-tight">{item.label}</span>}
+                      {isActive && isCollapsed && (
+                        <div className="absolute left-0 w-1 h-6 bg-primary rounded-r-full" />
+                      )}
+                    </Link>
+                  </TooltipTrigger>
+                  {isCollapsed && (
+                    <TooltipContent side="right" className="font-bold text-xs uppercase tracking-widest bg-foreground text-background border-none">
+                      {item.label}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
               );
             })}
-          </div>
 
-          {/* Quick Actions */}
-          <div className="mt-8">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 px-4">
-              Quick Actions
-            </p>
-            <div className="space-y-2">
-              <Button
-                variant="ghost"
-                onClick={handleViewStore}
-                className="w-full justify-start gap-3 text-muted-foreground hover:text-accent-foreground hover:bg-accent"
-              >
-                <Eye className="w-5 h-5" />
-                <span>View Store</span>
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={handleShareLink}
-                className="w-full justify-start gap-3 text-muted-foreground hover:text-accent-foreground hover:bg-accent"
-              >
-                <Share2 className="w-5 h-5" />
-                <span>Share Store Link</span>
-              </Button>
-            </div>
-          </div>
+            <div className="my-4 border-t border-sidebar-border/50" />
+
+            {!isCollapsed && (
+              <div className="px-3 mb-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-50">
+                  Quick Actions
+                </span>
+              </div>
+            )}
+
+            {quickActions.map((action) => (
+              <Tooltip key={action.label}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={action.onClick}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative text-muted-foreground hover:bg-primary/5 hover:text-foreground",
+                      isCollapsed && "justify-center px-0"
+                    )}
+                  >
+                    <action.icon className="w-5 h-5 shrink-0 transition-colors group-hover:text-primary" />
+                    {!isCollapsed && <span className="text-sm tracking-tight">{action.label}</span>}
+                  </button>
+                </TooltipTrigger>
+                {isCollapsed && (
+                  <TooltipContent side="right" className="font-bold text-xs uppercase tracking-widest bg-foreground text-background border-none">
+                    {action.label}
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            ))}
+          </TooltipProvider>
         </nav>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-sidebar-border">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-accent/50">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <ShoppingBag className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Free tier</p>
-              <p className="text-sm font-medium text-foreground">0% platform fee</p>
-            </div>
-          </div>
-        </div>
       </aside>
+
+      <ShareStoreModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        storeUrl={fullStoreUrl}
+      />
     </>
   );
 };

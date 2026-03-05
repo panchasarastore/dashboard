@@ -36,7 +36,7 @@ const Login = () => {
             });
             if (error) throw error;
             toast.success('Logged in successfully');
-            navigate('/');
+            navigate('/dashboard');
         } catch (error: any) {
             toast.error(error.message || 'Error logging in');
         } finally {
@@ -58,7 +58,7 @@ const Login = () => {
                                 Signed in as: <span className="font-medium text-primary">{user.email}</span>
                             </div>
                             <div className="flex gap-2">
-                                <Button className="flex-1" variant="outline" onClick={() => navigate('/')}>
+                                <Button className="flex-1" variant="outline" onClick={() => navigate('/dashboard')}>
                                     Go to Dashboard
                                 </Button>
                                 <Button className="flex-1" variant="destructive" onClick={handleSignOut} disabled={loading}>

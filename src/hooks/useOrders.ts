@@ -1,0 +1,262 @@
+import { useEffect } from 'react';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
+import { useStore } from '@/contexts/StoreContext';
+import { Database } from '@/types/database.types';
+
+type OrderRow = Database['public']['Tables']['orders']['Row'];
+type OrderItemRow = Database['public']['Tables']['order_items']['Row'];
+type ProductRow = Database['public']['Tables']['products']['Row'];
+
+export interface Order extends OrderRow {
+    status: OrderRow['order_status'];
+    order_date: string;
+    updated_at: string;
+}
+
+export interface OrderItem extends OrderItemRow {
+    products: {
+        images: string[];
+    } | null;
+}
+
+export interface OrderWithDetails extends OrderRow {
+    updated_at: string;
+    items: (OrderItemRow & {
+        products: {
+            images: string[];
+        } | null;
+    })[];
+}
+
+export const useOrders = (
+    searchQuery: string = '',
+    statusFilter: string = 'all',
+    dateRange?: { from: Date | undefined; to: Date | undefined }
+) => {
+    const { activeStore } = useStore();
+    const queryClient = useQueryClient();
+    const PAGE_SIZE = 20;
+
+    // Set up real-time subscription
+    useEffect(() => {
+        if (!activeStore?.id) return;
+
+        console.log(`[Realtime] 📡 Initializing subscription for store: ${activeStore.id}`);
+
+        const channel = supabase
+            .channel(`orders-live-${activeStore.id.slice(0, 8)}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `store_id=eq.${activeStore.id}`,
+                },
+                (payload) => {
+                    console.log('[Realtime] 🔔 Change detected!', {
+                        type: payload.eventType,
+                        new: payload.new,
+                        old: payload.old
+                    });
+
+                    if (payload.eventType === 'INSERT') {
+                        // Optimistically ADD the new order to the first page of results
+                        queryClient.setQueryData(['orders', activeStore.id, searchQuery, statusFilter], (old: any) => {
+                            if (!old || !old.pages || old.pages.length === 0) return old;
+
+                            const newOrderRaw = payload.new;
+                            // Map the raw payload to our Order format (similar to queryFn logic)
+                            const mappedNewOrder = {
+                                ...newOrderRaw,
+                                status: newOrderRaw.order_status,
+                                order_date: newOrderRaw.created_at,
+                                updated_at: newOrderRaw.updated_at,
+                                productName: "New Order", // Temporary until re-fetch
+                                productImage: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop',
+                                totalQuantity: 1
+                            };
+
+                            const newPages = [...old.pages];
+                            newPages[0] = {
+                                ...newPages[0],
+                                data: [mappedNewOrder, ...newPages[0].data],
+                                totalCount: (newPages[0].totalCount || 0) + 1
+                            };
+
+                            return { ...old, pages: newPages };
+                        });
+                    }
+
+                    // Invalidate for data consistency and full mapping (product names etc)
+                    queryClient.invalidateQueries({ queryKey: ['orders', activeStore.id] });
+
+                    if (payload.new && (payload.new as any).id) {
+                        queryClient.invalidateQueries({ queryKey: ['order', (payload.new as any).id] });
+                    }
+                }
+            )
+            .subscribe((status, err) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('[Realtime] ✅ Successfully subscribed to orders');
+                } else {
+                    console.error(`[Realtime] ❌ Subscription status: ${status}`, err);
+                }
+            });
+
+        return () => {
+            console.log('[Realtime] 🔌 Cleaning up subscription');
+            supabase.removeChannel(channel);
+        };
+    }, [activeStore?.id, queryClient]);
+
+    return useInfiniteQuery({
+        queryKey: ['orders', activeStore?.id, searchQuery, statusFilter, dateRange],
+        queryFn: async ({ pageParam = 0 }) => {
+            if (!activeStore) return { data: [], nextCursor: null };
+
+            let query = supabase
+                .from('orders')
+                .select('*, items:order_items(*, products(images))', { count: 'exact' })
+                .eq('store_id', activeStore.id)
+                .order('created_at', { ascending: false })
+                .range(pageParam, pageParam + PAGE_SIZE - 1);
+
+            if (searchQuery) {
+                // Search in customer_name or order_number
+                query = query.or(`customer_name.ilike.%${searchQuery}%,order_number.ilike.%${searchQuery}%`);
+            }
+
+            if (statusFilter !== 'all') {
+                query = query.eq('order_status', statusFilter as any);
+            }
+
+            if (dateRange?.from) {
+                query = query.gte('created_at', dateRange.from.toISOString());
+            }
+
+            if (dateRange?.to) {
+                query = query.lte('created_at', dateRange.to.toISOString());
+            }
+
+            const { data, error, count } = await query;
+
+            if (error) throw error;
+
+            const typedData = data as unknown as OrderWithDetails[];
+
+            const mappedData = typedData.map(order => {
+                const items = order.items || [];
+                const firstItem = items[0];
+                const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+
+                let productName = firstItem?.product_name || `Order #${order.order_number.slice(-4)}`;
+                if (items.length > 1) {
+                    productName = `${productName} + ${items.length - 1} others`;
+                }
+
+                const firstProduct = firstItem?.products;
+                const images = firstProduct?.images || [];
+                const firstImage = Array.isArray(images) && images.length > 0 ? images[0] : null;
+
+                return {
+                    ...order,
+                    status: order.order_status,
+                    order_date: order.created_at,
+                    updated_at: order.updated_at,
+                    productName,
+                    productImage: firstImage || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop', // Fallback
+                    totalQuantity: totalItems
+                };
+            });
+
+            const nextCursor = (count && pageParam + PAGE_SIZE < count) ? pageParam + PAGE_SIZE : null;
+
+            return {
+                data: mappedData as (Order & { productName: string; productImage: string; totalQuantity: number })[],
+                nextCursor,
+                totalCount: count
+            };
+        },
+        initialPageParam: 0,
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        enabled: !!activeStore,
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 30,
+    });
+};
+
+export const useOrder = (orderId: string | undefined) => {
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        if (!orderId) return;
+
+        const channel = supabase
+            .channel(`order-detail-${orderId.slice(0, 8)}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `id=eq.${orderId}`,
+                },
+                (payload) => {
+                    console.log(`[Realtime] 📦 Order ${orderId} updated!`, payload.new);
+
+                    // Directly update cache if we have new data
+                    if (payload.new) {
+                        queryClient.setQueryData(['order', orderId], (old: any) => {
+                            if (!old) return old;
+                            return {
+                                ...old,
+                                ...payload.new,
+                                status: (payload.new as any).order_status // Map back to our flattened 'status'
+                            };
+                        });
+                    }
+
+                    // Only invalidate the list view to update tab counts
+                    queryClient.invalidateQueries({ queryKey: ['orders'] });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [orderId, queryClient]);
+
+    return useQuery({
+        queryKey: ['order', orderId],
+        queryFn: async () => {
+            if (!orderId) return null;
+
+            const { data, error } = await supabase
+                .from('orders')
+                .select('*, items:order_items(*, products(*))') // Get products for stock
+                .eq('id', orderId)
+                .single();
+
+            if (error) throw error;
+            if (!data) return null;
+
+            const order = data as unknown as OrderWithDetails;
+
+            return {
+                ...order,
+                status: order.order_status,
+                order_date: order.created_at,
+                order_items: (order.items || []).map((item: any) => ({
+                    ...item,
+                    product_image: item.products?.images?.[0] || null
+                }))
+            };
+        },
+        enabled: !!orderId,
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 30,
+    });
+};
