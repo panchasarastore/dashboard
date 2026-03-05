@@ -5,7 +5,7 @@
 export const getStoreBaseUrl = (): string => {
     // If we are in a server-side environment (like during a build), use the environment variable
     if (typeof window === 'undefined') {
-        return import.meta.env.VITE_STORE_BASE_URL || 'http://localhost:4321';
+        return import.meta.env.VITE_STORE_BASE_URL || 'https://pnsara.store';
     }
 
     const { hostname, protocol } = window.location;
