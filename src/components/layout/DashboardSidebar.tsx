@@ -120,7 +120,7 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
                   {activeStore?.logo_url ? (
                     <img src={activeStore.logo_url} alt="Logo" className="w-full h-full object-contain" />
                   ) : (
-                    <span className="text-2xl">🏪</span>
+                    <img src="https://pnsara.store/logo_pnsara.png" alt="Panchasara" className="w-full h-full object-contain" />
                   )}
                 </div>
               </div>
@@ -131,7 +131,7 @@ const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => {
                 {activeStore?.logo_url ? (
                   <img src={activeStore.logo_url} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
-                  <span className="text-xl">🏪</span>
+                  <img src="https://pnsara.store/logo_pnsara.png" alt="Panchasara" className="w-full h-full object-contain p-1" />
                 )}
               </div>
             </Link>

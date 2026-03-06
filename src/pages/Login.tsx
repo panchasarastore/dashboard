@@ -47,8 +47,19 @@ const Login = () => {
     return (
         <div className="flex items-center justify-center min-h-screen bg-background p-4">
             <Card className="w-full max-w-md">
-                <CardHeader>
-                    <CardTitle>Sign In (Local Test)</CardTitle>
+                <CardHeader className="text-center">
+                    <div className="flex justify-center mb-4">
+                        <img
+                            src="https://pnsara.store/logo_pnsara.png"
+                            alt="Panchasara Logo"
+                            className="h-12 w-auto"
+                            onError={(e) => {
+                                // Fallback if the absolute URL fails for some reason
+                                (e.target as HTMLImageElement).src = '/favicon.svg';
+                            }}
+                        />
+                    </div>
+                    <CardTitle>Sign In</CardTitle>
                     <CardDescription>Enter your email and password to access the dashboard.</CardDescription>
                 </CardHeader>
                 <CardContent>
