@@ -467,7 +467,7 @@ const Settings = () => {
                                             formData.blackout_dates.map(date => (
                                                 <div key={date} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-bold animate-in zoom-in duration-200">
                                                     {format(new Date(date), "MMM dd, yyyy")}
-                                                    <button onClick={() => toggleDate(new Date(date))} className="hover:text-destructive transition-colors">
+                                                    <button aria-label="Remove blackout date" title="Remove blackout date" onClick={() => toggleDate(new Date(date))} className="hover:text-destructive transition-colors">
                                                         <X className="w-3 h-3" />
                                                     </button>
                                                 </div>
